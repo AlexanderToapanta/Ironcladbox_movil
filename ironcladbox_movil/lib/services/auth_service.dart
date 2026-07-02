@@ -123,6 +123,12 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    String? lastName,
+    String? phone,
+    int? membershipId,
+    double? weight,
+    double? height,
+    String? role,
   }) async {
     try {
       final response = await _apiService.post(
@@ -130,7 +136,13 @@ class AuthService {
         data: {
           'email': email,
           'password': password,
-          'name': name,
+          'nombre': name,
+          'apellido': lastName,
+          'telefono': phone,
+          'id_membresia': membershipId,
+          'peso': weight,
+          'altura': height,
+          'rol': role,
         },
       );
       
@@ -173,6 +185,28 @@ class AuthService {
   /// Obtener token actual
   Future<String?> getToken() async {
     return await _apiService.getToken();
+  }
+
+  /// Obtener perfil autenticado
+  Future<Map<String, dynamic>?> getProfile() async {
+    try {
+      final response = await _apiService.get(ApiConfig.profileEndpoint);
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        final nested = data['data'];
+        if (nested is Map<String, dynamic>) {
+          return nested;
+        }
+        final result = data['result'];
+        if (result is Map<String, dynamic>) {
+          return result;
+        }
+        return data;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /// Obtener rol actual almacenado

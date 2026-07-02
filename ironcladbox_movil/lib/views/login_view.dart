@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'widgets/atoms/ironclad_background.dart';
+import 'widgets/atoms/ironclad_form_field.dart';
+import 'widgets/atoms/ironclad_primary_button.dart';
+import 'widgets/atoms/ironclad_status_banner.dart';
+import 'widgets/molecules/ironclad_auth_card.dart';
 import '../viewmodels/login_viewmodel.dart';
 import 'dashboard_view.dart';
+import 'register_view.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -48,65 +54,74 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Center(
-        child: Consumer<LoginViewModel>(
-          builder: (context, viewModel, child) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(labelText: 'Correo'),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Ingresa tu correo';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Contraseña'),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Ingresa tu contraseña';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    if (viewModel.errorMessage.isNotEmpty) ...[
-                      Text(
-                        viewModel.errorMessage,
-                        style: const TextStyle(color: Colors.red),
+      body: IroncladBackground(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Consumer<LoginViewModel>(
+                builder: (context, viewModel, child) {
+                  return IroncladAuthCard(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          IroncladFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            label: 'Correo',
+                            icon: Icons.mail_outline,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Ingresa tu correo';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          IroncladFormField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            label: 'Contraseña',
+                            icon: Icons.lock_outline,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Ingresa tu contraseña';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          if (viewModel.errorMessage.isNotEmpty) ...[
+                            IroncladStatusBanner(message: viewModel.errorMessage),
+                            const SizedBox(height: 16),
+                          ],
+                          IroncladPrimaryButton(
+                            label: 'Ingresar',
+                            icon: Icons.login,
+                            isLoading: viewModel.isLoading,
+                            onPressed: _submitLogin,
+                          ),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const RegisterView()),
+                              );
+                            },
+                            child: const Text('Crear cuenta nueva'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: viewModel.isLoading ? null : _submitLogin,
-                        child: viewModel.isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Ingresar'),
-                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );

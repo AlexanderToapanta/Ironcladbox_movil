@@ -16,6 +16,7 @@ class ApiConfig {
   static const String loginEndpoint = '/api/auth/login';
   static const String registerEndpoint = '/api/auth/register';
   static const String verifyTokenEndpoint = '/api/auth/verify';
+  static const String profileEndpoint = '/api/auth/profile';
   
   // Endpoints de usuarios
   static const String usersEndpoint = '/api/users';

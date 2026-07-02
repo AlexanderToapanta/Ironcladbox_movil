@@ -44,6 +44,19 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
     return false;
   }
+
+  /// Cerrar sesión y limpiar el estado local
+  Future<void> logout() async {
+    _isLoading = true;
+    notifyListeners();
+
+    await _authService.logout();
+
+    _currentRole = 'athlete';
+    _errorMessage = '';
+    _isLoading = false;
+    notifyListeners();
+  }
   
   /// Limpiar mensajes de error
   void clearError() {

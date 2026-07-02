@@ -42,21 +42,63 @@ class _SplashViewState extends State<SplashView> {
         }
 
         return Scaffold(
-          body: Center(
-            child: viewModel.isLoading
-                ? const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Verificando sesión...'),
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF1C1C1E), Color(0xFF111113), Color(0xFFFF3B30)],
+                stops: [0.0, 0.6, 1.0],
+              ),
+            ),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.35),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.fitness_center,
+                      size: 72,
+                      color: Color(0xFFFF3B30),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'IRONCLAD BOX',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2,
+                            color: Colors.white,
+                          ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (viewModel.isLoading) ...[
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: Color(0xFFFF3B30),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Verificando sesión...',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ] else ...[
+                      Text(
+                        viewModel.errorMessage.isEmpty
+                            ? 'Cargando...'
+                            : viewModel.errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
                     ],
-                  )
-                : Text(
-                    viewModel.errorMessage.isEmpty
-                        ? 'Cargando...'
-                        : viewModel.errorMessage,
-                  ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
