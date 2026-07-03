@@ -79,7 +79,7 @@ Todos definidos en ApiConfig:
 - ApiConfig.registerEndpoint     → /api/auth/register
 - ApiConfig.verifyTokenEndpoint  → /api/auth/verify
 - ApiConfig.usersEndpoint        → /api/users
-- ApiConfig.wodsEndpoint         → /api/wods
+- ApiConfig.wodsEndpoint         → /api/wod
 - ApiConfig.clasesEndpoint       → /api/clases
 - ApiConfig.inscripcionesEndpoint → /api/inscripciones
 - ApiConfig.membershipsEndpoint  → /api/memberships

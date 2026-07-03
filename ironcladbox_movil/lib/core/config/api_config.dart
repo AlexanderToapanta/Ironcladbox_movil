@@ -22,7 +22,7 @@ class ApiConfig {
   static const String usersEndpoint = '/api/users';
   
   // Endpoints de WOD (Workout of the Day)
-  static const String wodsEndpoint = '/api/wods';
+  static const String wodsEndpoint = '/api/wod';
   
   // Endpoints de clases
   static const String clasesEndpoint = '/api/clases';
@@ -31,7 +31,7 @@ class ApiConfig {
   static const String inscripcionesEndpoint = '/api/inscripciones';
   
   // Endpoints de membresías
-  static const String membershipsEndpoint = '/api/memberships';
+  static const String membershipsEndpoint = '/api/auth/memberships';
   
   // Endpoints de ejercicios
   static const String ejerciciosEndpoint = '/api/ejercicios';

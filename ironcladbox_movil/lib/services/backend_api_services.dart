@@ -109,7 +109,7 @@ List<String> _classPaths(String suffix) => [
 
 List<String> _wodPaths(String suffix) => [
       '${ApiConfig.wodsEndpoint}$suffix',
-      '/api/wods$suffix',
+      '/api/wod$suffix',
     ];
 
 class MembershipsService {
@@ -450,21 +450,39 @@ class WodsService {
   final ApiService _api = ApiService();
 
   Future<List<WodDto>> getByMonth(int year, int month) async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/wods/calendar/$year/$month',
-    );
-    return asApiList(response.data)
-        .whereType<Map>()
-        .map((item) => WodDto.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    final String path = '/api/wod/calendar/$year/$month';
+    final String fullUrl = '${ApiConfig.baseUrl}$path';
+
+    print("=========== WODS ===========");
+    print("GET -> $fullUrl");
+
+    try {
+      final response = await _api.get(path);
+      print("STATUS: ${response.statusCode}");
+      print("BODY: ${response.data}");
+
+      return asApiList(response.data)
+          .whereType<Map>()
+          .map((item) => WodDto.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } on DioException catch (e) {
+      print("STATUS ERROR: ${e.response?.statusCode}");
+      print("BODY ERROR: ${e.response?.data}");
+      rethrow;
+    }
   }
 
   Future<WodDto?> getByDate(DateTime fecha) async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/wods/date/${fecha.toIso8601String().split('T').first}',
-    );
-    final data = asApiObject(response.data);
-    return data.isEmpty ? null : WodDto.fromJson(data);
+    final String path = '/api/wod/date/${fecha.toIso8601String().split('T').first}';
+    print("WodsService: getByDate -> $path");
+    try {
+      final response = await _api.get(path);
+      final data = asApiObject(response.data);
+      return data.isEmpty ? null : WodDto.fromJson(data);
+    } on DioException catch (e) {
+      print("WodsService ERROR: ${e.response?.statusCode} - ${e.response?.data}");
+      rethrow;
+    }
   }
 
   Future<WodDto?> getById(int id) async {
@@ -492,13 +510,11 @@ class WodsService {
   }
 
   Future<void> delete(int id) async {
-    await _deleteWithFallback(_api, _wodPaths('/$id'));
+    await _api.delete('/api/wod/$id');
   }
 
   Future<List<ScheduleDto>> getSchedulesByWod(int id) async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/wods/$id/schedules',
-    );
+    final response = await _api.get('/api/wod/$id/schedules');
     return asApiList(response.data)
         .whereType<Map>()
         .map((item) => ScheduleDto.fromJson(Map<String, dynamic>.from(item)))
@@ -510,7 +526,7 @@ class WodsService {
     List<Map<String, dynamic>> schedules,
   ) async {
     final response = await _api.post(
-      '${ApiConfig.baseUrl}/api/wods/$wodId/schedule',
+      '/api/wod/$wodId/schedule',
       data: schedules,
     );
     return asApiList(response.data)
@@ -520,57 +536,43 @@ class WodsService {
   }
 
   Future<dynamic> enrollSchedule(int scheduleId) async {
-    final response = await _api.post(
-      '${ApiConfig.baseUrl}/api/wods/schedule/$scheduleId/enroll',
-    );
+    final response = await _api.post('/api/wod/schedule/$scheduleId/enroll');
     return pickPayload(response.data);
   }
 
   Future<dynamic> unenrollSchedule(int scheduleId) async {
-    final response = await _api.delete(
-      '${ApiConfig.baseUrl}/api/wods/schedule/$scheduleId/unenroll',
-    );
+    final response = await _api.delete('/api/wod/schedule/$scheduleId/unenroll');
     return pickPayload(response.data);
   }
 
   Future<dynamic> cancelSchedule(int scheduleId) async {
-    final response = await _api.put(
-      '${ApiConfig.baseUrl}/api/wods/schedule/$scheduleId/cancel',
-    );
+    final response = await _api.put('/api/wod/schedule/$scheduleId/cancel');
     return pickPayload(response.data);
   }
 
   Future<List<dynamic>> getEnrolledAthletes(int scheduleId) async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/wods/schedule/$scheduleId/athletes',
-    );
+    final response = await _api.get('/api/wod/schedule/$scheduleId/athletes');
     return asApiList(response.data);
   }
 
   Future<List<dynamic>> getMySchedules() async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/wods/my-schedules',
-    );
+    final response = await _api.get('/api/wod/my-schedules');
     return asApiList(response.data);
   }
 
   Future<StreakDto?> getRacha() async {
-    final response = await _api.get('${ApiConfig.baseUrl}/api/wods/racha');
+    final response = await _api.get('/api/wod/racha');
     final data = asApiObject(response.data);
     return data.isEmpty ? null : StreakDto.fromJson(data);
   }
 
   Future<List<dynamic>> getHistorialAsistencias() async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/wods/historial-asistencias',
-    );
+    final response = await _api.get('/api/wod/historial-asistencias');
     return asApiList(response.data);
   }
 
   Future<dynamic> marcarAsistencia(int inscripcionId) async {
-    final response = await _api.post(
-      '${ApiConfig.baseUrl}/api/wods/asistencia/$inscripcionId',
-    );
+    final response = await _api.post('/api/wod/asistencia/$inscripcionId');
     return pickPayload(response.data);
   }
 }

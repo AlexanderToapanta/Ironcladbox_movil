@@ -425,11 +425,15 @@ class WodsViewModel extends BaseCollectionViewModel<WodDto> {
   final WodsService _service = WodsService();
 
   Future<void> loadByMonth(int year, int month) async {
+    print("WodsViewModel: loadByMonth($year, $month)");
     _setLoading(true);
     _setError('');
     try {
-      _setItems(await _service.getByMonth(year, month));
+      final items = await _service.getByMonth(year, month);
+      print("WodsViewModel: Loaded ${items.length} wods");
+      _setItems(items);
     } catch (e) {
+      print("WodsViewModel ERROR: $e");
       _setError(extractServiceError(e));
     }
     _setLoading(false);

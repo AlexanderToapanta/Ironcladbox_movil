@@ -114,6 +114,27 @@ class AuthService {
       } else {
         throw Exception('Error en login: ${response.statusMessage}');
       }
+    } on DioException catch (e) {
+      // Extraer mensaje de error del backend (para errores 403 de membresía, etc.)
+      final dynamic responseData = e.response?.data;
+      if (responseData is Map && responseData.containsKey('message')) {
+        throw Exception(responseData['message']);
+      }
+      
+      // Fallback a manejo genérico
+      if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout) {
+        throw Exception('No se pudo conectar con el servidor. Verifica tu red.');
+      }
+      
+      if (e.response?.statusCode == 401) {
+        throw Exception('Credenciales incorrectas');
+      }
+
+      if (e.response?.statusCode == 403) {
+        throw Exception('Acceso denegado. Revisa tu membresía.');
+      }
+
+      throw Exception('Error del servidor: ${e.response?.statusCode ?? "desconocido"}');
     } catch (e) {
       rethrow;
     }
@@ -173,11 +194,14 @@ class AuthService {
       
       final dynamic responseData = e.response?.data;
       if (responseData is Map && responseData.containsKey('message')) {
-        print('BACKEND ERROR MESSAGE: ${responseData['message']}');
         throw Exception(responseData['message']);
       }
       
-      rethrow;
+      if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout) {
+        throw Exception('No se pudo conectar con el servidor. Verifica tu red.');
+      }
+
+      throw Exception('Error del servidor: ${e.response?.statusCode ?? "desconocido"}');
     } catch (e) {
       print('NON-DIO ERROR: $e');
       rethrow;
