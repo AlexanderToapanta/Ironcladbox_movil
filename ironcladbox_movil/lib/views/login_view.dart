@@ -59,7 +59,7 @@ class _LoginViewState extends State<LoginView> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Consumer<LoginViewModel>(
                 builder: (context, viewModel, child) {
                   return IroncladAuthCard(
@@ -69,6 +69,8 @@ class _LoginViewState extends State<LoginView> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // El encabezado ya viene incluido en IroncladAuthCard, 
+                          // por lo que aquí solo ponemos los campos del formulario.
                           IroncladFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
@@ -112,7 +114,7 @@ class _LoginViewState extends State<LoginView> {
                                 MaterialPageRoute(builder: (_) => const RegisterView()),
                               );
                             },
-                            child: const Text('Crear cuenta nueva'),
+                            child: const Text('Crear cuenta nueva', style: TextStyle(color: Color(0xFFFF3B30))),
                           ),
                         ],
                       ),

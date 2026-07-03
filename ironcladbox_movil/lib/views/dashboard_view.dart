@@ -3,12 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../viewmodels/login_viewmodel.dart';
 import 'athletes_view.dart';
-import 'classes_view.dart';
-import 'contacts_view.dart';
 import 'dashboard_home_view.dart';
 import 'exercises_view.dart';
-import 'memberships_view.dart';
 import 'login_view.dart';
+import 'my_membership_view.dart';
 import 'profile_view.dart';
 import 'progress_view.dart';
 import 'trainers_view.dart';
@@ -36,7 +34,7 @@ class _DashboardViewState extends State<DashboardView> {
         _DashboardTab('Atletas', Icons.groups, 'Gestión de atletas'),
         _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
         _DashboardTab('Entrenadores', Icons.badge, 'Gestión de entrenadores'),
-        _DashboardTab('Perfil', Icons.person, 'Perfil de administrador'),
+        _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
     }
 
@@ -46,13 +44,14 @@ class _DashboardViewState extends State<DashboardView> {
         _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
         _DashboardTab('Atletas', Icons.groups, 'Consulta de atletas'),
         _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Gestión de ejercicios'),
-        _DashboardTab('Perfil', Icons.person, 'Perfil de entrenador'),
+        _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
     }
 
     return const [
       _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
       _DashboardTab('WODs', Icons.fitness_center, 'Consultar WOD'),
+      _DashboardTab('Membresía', Icons.card_membership, 'Mi Membresía'),
       _DashboardTab('Progreso', Icons.show_chart, 'Registrar progreso'),
       _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
     ];
@@ -135,6 +134,7 @@ List<Widget> _pagesForRole(String role) {
   return const [
     DashboardHomeView(role: 'athlete'),
     WodsView(),
+    MyMembershipView(),
     ProgressView(),
     ProfileView(),
   ];

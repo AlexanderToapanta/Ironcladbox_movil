@@ -10,14 +10,15 @@ class IroncladBackground extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1C1C1E), Color(0xFF111113), Color(0xFFFF3B30)],
-          stops: [0.0, 0.6, 1.0],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF1A1A1A),
+            Color(0xFF000000),
+          ],
         ),
       ),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.38),
+      child: SafeArea(
         child: child,
       ),
     );

@@ -124,6 +124,8 @@ class AthleteDto {
   final String? apellido;
   final String? email;
   final String? telefono;
+  final String? direccion;
+  final DateTime? fechaNacimiento;
   final double? peso;
   final double? altura;
   final int? membershipId;
@@ -145,6 +147,8 @@ class AthleteDto {
     this.apellido,
     this.email,
     this.telefono,
+    this.direccion,
+    this.fechaNacimiento,
     this.peso,
     this.altura,
     this.membershipId,
@@ -168,6 +172,8 @@ class AthleteDto {
       apellido: json['apellido']?.toString(),
       email: json['email']?.toString(),
       telefono: json['telefono']?.toString(),
+      direccion: json['direccion']?.toString(),
+      fechaNacimiento: parseApiDate(json['fecha_nacimiento'] ?? json['fechaNacimiento']),
       peso: parseApiDouble(json['peso']),
       altura: parseApiDouble(json['altura']),
       membershipId: parseApiInt(json['id_membresia'] ?? json['idMembresia']),
@@ -188,6 +194,8 @@ class AthleteDto {
         'id_usuario': userId,
         'peso': peso,
         'altura': altura,
+        'direccion': direccion,
+        'fecha_nacimiento': fechaNacimiento?.toIso8601String(),
         'id_membresia': membershipId,
         'fecha_inicio_membresia': fechaInicioMembresia?.toIso8601String(),
         'fecha_fin_membresia': fechaFinMembresia?.toIso8601String(),
@@ -202,11 +210,14 @@ class TrainerDto {
   final String? apellido;
   final String? email;
   final String? telefono;
+  final String? direccion;
+  final DateTime? fechaNacimiento;
   final bool? activo;
   final String? especialidad;
   final int? aniosExperiencia;
   final String? certificaciones;
   final String? biografia;
+  final String? estado;
 
   const TrainerDto({
     this.id,
@@ -215,11 +226,14 @@ class TrainerDto {
     this.apellido,
     this.email,
     this.telefono,
+    this.direccion,
+    this.fechaNacimiento,
     this.activo,
     this.especialidad,
     this.aniosExperiencia,
     this.certificaciones,
     this.biografia,
+    this.estado,
   });
 
   factory TrainerDto.fromJson(Map<String, dynamic> json) {
@@ -230,11 +244,14 @@ class TrainerDto {
       apellido: json['apellido']?.toString(),
       email: json['email']?.toString(),
       telefono: json['telefono']?.toString(),
+      direccion: json['direccion']?.toString(),
+      fechaNacimiento: parseApiDate(json['fecha_nacimiento'] ?? json['fechaNacimiento']),
       activo: parseApiBool(json['estado'] ?? json['activo']),
       especialidad: json['especialidad']?.toString(),
       aniosExperiencia: parseApiInt(json['anios_experiencia'] ?? json['aniosExperiencia']),
       certificaciones: json['certificaciones']?.toString(),
       biografia: json['biografia']?.toString(),
+      estado: json['estado']?.toString(),
     );
   }
 
@@ -244,6 +261,8 @@ class TrainerDto {
         'anios_experiencia': aniosExperiencia,
         'certificaciones': certificaciones,
         'biografia': biografia,
+        'direccion': direccion,
+        'fecha_nacimiento': fechaNacimiento?.toIso8601String(),
       };
 }
 

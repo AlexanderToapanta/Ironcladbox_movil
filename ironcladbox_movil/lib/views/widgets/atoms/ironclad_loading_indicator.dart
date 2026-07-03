@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class IroncladLoadingIndicator extends StatelessWidget {
   final String message;
@@ -9,18 +10,19 @@ class IroncladLoadingIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              color: Color(0xFFFF3B30),
-            ),
+          const SpinKitDoubleBounce(
+            color: Color(0xFFFF3B30),
+            size: 50.0,
           ),
-          const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Colors.white70)),
+          if (message.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
         ],
       ),
     );
