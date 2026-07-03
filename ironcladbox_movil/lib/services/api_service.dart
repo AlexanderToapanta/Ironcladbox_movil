@@ -53,38 +53,22 @@ class ApiService {
   
   /// GET request
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
-    try {
-      return await _dio.get(path, queryParameters: queryParameters);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    }
+    return await _dio.get(path, queryParameters: queryParameters);
   }
   
   /// POST request
   Future<Response> post(String path, {dynamic data}) async {
-    try {
-      return await _dio.post(path, data: data);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    }
+    return await _dio.post(path, data: data);
   }
   
   /// PUT request
   Future<Response> put(String path, {dynamic data}) async {
-    try {
-      return await _dio.put(path, data: data);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    }
+    return await _dio.put(path, data: data);
   }
   
   /// DELETE request
   Future<Response> delete(String path) async {
-    try {
-      return await _dio.delete(path);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    }
+    return await _dio.delete(path);
   }
   
   /// Manejo centralizado de excepciones HTTP

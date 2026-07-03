@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../viewmodels/backend_viewmodels.dart';
-import 'dashboard_view.dart';
+import 'login_view.dart';
 import 'widgets/atoms/ironclad_background.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
 import 'widgets/atoms/ironclad_form_field.dart';
@@ -71,7 +71,7 @@ class _RegisterViewState extends State<RegisterView> {
     });
 
     try {
-      final session = await _authService.register(
+      final successMessage = await _authService.register(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         name: _nombreController.text.trim(),
@@ -85,8 +85,18 @@ class _RegisterViewState extends State<RegisterView> {
 
       if (!mounted) return;
 
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+
+      // Redirigir al Login
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => DashboardView(role: session.role)),
+        MaterialPageRoute(builder: (_) => const LoginView()),
         (route) => false,
       );
     } catch (e) {

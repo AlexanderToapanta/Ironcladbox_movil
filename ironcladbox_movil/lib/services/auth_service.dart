@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'api_service.dart';
 import '../core/config/api_config.dart';
 import '../models/app_models.dart';
@@ -119,7 +120,7 @@ class AuthService {
   }
   
   /// Registro - crea nueva cuenta
-  Future<AuthSession> register({
+  Future<String> register({
     required String email,
     required String password,
     required String name,
@@ -130,35 +131,55 @@ class AuthService {
     double? height,
     String? role,
   }) async {
+    final String path = ApiConfig.registerEndpoint;
+    final String fullUrl = '${ApiConfig.baseUrl}$path';
+    
+    final Map<String, dynamic> body = {
+      'nombre': name,
+      'apellido': lastName ?? '',
+      'email': email,
+      'telefono': phone ?? '',
+      'password': password,
+      'rol': role ?? 'ATLETA',
+      'peso': weight ?? 0,
+      'altura': height ?? 0,
+      'id_membresia': membershipId ?? 0,
+    };
+
+    print('========== REGISTER ==========');
+    print('URL: $fullUrl');
+    print('HEADERS: ${ApiConfig.defaultHeaders}');
+    print('BODY: $body');
+
     try {
       final response = await _apiService.post(
-        ApiConfig.registerEndpoint,
-        data: {
-          'email': email,
-          'password': password,
-          'nombre': name,
-          'apellido': lastName,
-          'telefono': phone,
-          'id_membresia': membershipId,
-          'peso': weight,
-          'altura': height,
-          'rol': role,
-        },
+        path,
+        data: body,
       );
+
+      print('STATUS: ${response.statusCode}');
+      print('RESPONSE: ${response.data}');
       
-      if (response.statusCode == 201) {
-        final token = _extractToken(
-          response.data,
-          headers: response.headers.map,
-        );
-        final role = _extractRole(response.data);
-        await _apiService.setToken(token);
-        await _apiService.setRole(role);
-        return AuthSession(token: token, role: role);
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final String message = response.data['message'] ?? 'Registro exitoso';
+        return message;
       } else {
         throw Exception('Error en registro: ${response.statusMessage}');
       }
+    } on DioException catch (e) {
+      print('STATUS: ${e.response?.statusCode}');
+      print('BODY: ${e.response?.data}');
+      print('MESSAGE: ${e.message}');
+      
+      final dynamic responseData = e.response?.data;
+      if (responseData is Map && responseData.containsKey('message')) {
+        print('BACKEND ERROR MESSAGE: ${responseData['message']}');
+        throw Exception(responseData['message']);
+      }
+      
+      rethrow;
     } catch (e) {
+      print('NON-DIO ERROR: $e');
       rethrow;
     }
   }
