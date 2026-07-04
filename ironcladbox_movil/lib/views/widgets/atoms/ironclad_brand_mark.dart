@@ -7,11 +7,12 @@ class IroncladBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = compact ? 44.0 : 56.0;
-    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
+    final iconSize = compact ? 44.0 : 64.0;
+    final titleStyle = const TextStyle(
+          fontWeight: FontWeight.w900,
           letterSpacing: 2,
           color: Colors.white,
+          fontFamily: 'Bebas Neue',
         );
 
     return Column(
@@ -22,11 +23,11 @@ class IroncladBrandMark extends StatelessWidget {
           size: iconSize,
           color: const Color(0xFFFF3B30),
         ),
-        SizedBox(height: compact ? 8 : 12),
+        SizedBox(height: compact ? 4 : 8),
         Text(
           'IRONCLAD BOX',
           textAlign: TextAlign.center,
-          style: titleStyle?.copyWith(fontSize: compact ? 22 : 28),
+          style: titleStyle.copyWith(fontSize: compact ? 24 : 36),
         ),
       ],
     );

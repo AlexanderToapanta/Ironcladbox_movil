@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../viewmodels/backend_viewmodels.dart';
+import '../viewmodels/login_viewmodel.dart';
 import '../services/auth_service.dart';
 import 'widgets/atoms/ironclad_loading_indicator.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
+import 'login_view.dart';
 
 class MyMembershipView extends StatefulWidget {
   const MyMembershipView({super.key});
@@ -27,6 +29,7 @@ class _MyMembershipViewState extends State<MyMembershipView> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _loadingData = true);
     await context.read<AthletesViewModel>().loadMyMembership();
     await context.read<MembershipsViewModel>().loadAll();
@@ -36,6 +39,7 @@ class _MyMembershipViewState extends State<MyMembershipView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Consumer2<AthletesViewModel, MembershipsViewModel>(
         builder: (context, athletesVm, membershipsVm, child) {
           if (_loadingData || athletesVm.isLoading || membershipsVm.isLoading) {
@@ -226,10 +230,27 @@ class _MyMembershipViewState extends State<MyMembershipView> {
 
   Future<void> _submitChange() async {
     if (_selectedMembershipId == null) return;
-    await context.read<AthletesViewModel>().updateMyMembership({'id_membresia': _selectedMembershipId});
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solicitud enviada correctamente')));
-      _loadData();
+    try {
+      await context.read<AthletesViewModel>().updateMyMembership({'id_membresia': _selectedMembershipId});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Solicitud enviada. Tu cuenta se cerrará por seguridad.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          await context.read<LoginViewModel>().logout();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginView()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -245,10 +266,17 @@ class _MyMembershipViewState extends State<MyMembershipView> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              await context.read<AthletesViewModel>().cancelMyMembership();
-              if (mounted) {
-                Navigator.pop(context);
-                _loadData();
+              try {
+                await context.read<AthletesViewModel>().cancelMyMembership();
+                if (mounted) {
+                  Navigator.pop(context);
+                  _loadData();
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
               }
             },
             child: const Text('SÍ, CANCELAR'),

@@ -85,6 +85,7 @@ class MembershipDto {
   final int? duracionDias;
   final bool? activa;
   final String? estado;
+  final String? beneficios;
 
   const MembershipDto({
     required this.nombre,
@@ -94,6 +95,7 @@ class MembershipDto {
     this.duracionDias,
     this.activa,
     this.estado,
+    this.beneficios,
   });
 
   factory MembershipDto.fromJson(Map<String, dynamic> json) {
@@ -105,6 +107,7 @@ class MembershipDto {
       duracionDias: parseApiInt(json['duracion_dias'] ?? json['duracionDias']),
       activa: parseApiBool(json['activa'] ?? json['estado']),
       estado: json['estado']?.toString(),
+      beneficios: json['beneficios']?.toString(),
     );
   }
 
@@ -114,6 +117,7 @@ class MembershipDto {
         'precio': precio,
         'duracion_dias': duracionDias,
         'estado': estado,
+        'beneficios': beneficios,
       };
 }
 
@@ -135,6 +139,8 @@ class AthleteDto {
   final bool? activo;
   final String? estado;
   final String? membershipName;
+  final int? totalInscripciones;
+  final DateTime? ultimoWod;
   final bool canLogin;
   final bool isExpired;
   final bool hasMembership;
@@ -158,6 +164,8 @@ class AthleteDto {
     this.activo,
     this.estado,
     this.membershipName,
+    this.totalInscripciones,
+    this.ultimoWod,
     this.canLogin = false,
     this.isExpired = false,
     this.hasMembership = false,
@@ -182,7 +190,9 @@ class AthleteDto {
       fechaFinMembresia: parseApiDate(json['fecha_fin_membresia'] ?? json['fechaFinMembresia']),
       activo: parseApiBool(json['estado'] ?? json['activo']),
       estado: json['estado']?.toString(),
-      membershipName: json['membresia_nombre']?.toString(),
+      membershipName: json['membresia_nombre']?.toString() ?? json['membership_name']?.toString(),
+      totalInscripciones: parseApiInt(json['total_inscripciones'] ?? json['inscripciones_count'] ?? json['total_inscritos'] ?? json['total_clases'] ?? json['totalInscripciones']),
+      ultimoWod: parseApiDate(json['ultimo_wod'] ?? json['fecha_ultimo_wod'] ?? json['ultimo_entrenamiento'] ?? json['last_wod'] ?? json['fecha'] ?? json['fecha_inscripcion'] ?? json['ultimoWod']),
       canLogin: parseApiBool(json['canLogin']) ?? false,
       isExpired: parseApiBool(json['isExpired']) ?? false,
       hasMembership: parseApiBool(json['hasMembresia']) ?? false,

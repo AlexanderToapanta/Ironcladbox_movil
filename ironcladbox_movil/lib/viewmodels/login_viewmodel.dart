@@ -14,6 +14,12 @@ class LoginViewModel extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get currentRole => _currentRole;
   
+  /// Inicializar el rol si ya hay una sesión activa
+  void setRole(String role) {
+    _currentRole = role;
+    notifyListeners();
+  }
+
   /// Realizar login
   Future<bool> login({
     required String email,

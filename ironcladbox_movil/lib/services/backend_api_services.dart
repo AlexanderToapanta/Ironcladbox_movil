@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:path/path.dart' as p;
 
 import '../core/config/api_config.dart';
 import '../models/backend_api_models.dart';
@@ -606,26 +608,77 @@ class ExercisesService {
   }
 
   Future<Map<String, dynamic>> getStats() async {
-    final response = await _api.get(
-      '${ApiConfig.baseUrl}/api/ejercicios/stats',
-    );
+    final response = await _api.get('${ApiConfig.baseUrl}/api/ejercicios/stats');
     return asApiObject(response.data);
   }
 
-  Future<ExerciseDto> create(Map<String, dynamic> payload) async {
-    final response = await _api.post(
-      '${ApiConfig.baseUrl}/api/ejercicios',
-      data: payload,
-    );
-    return ExerciseDto.fromJson(asApiObject(response.data));
+  Future<ExerciseDto> create(Map<String, dynamic> payload, {File? imageFile}) async {
+    try {
+      dynamic data;
+      
+      if (imageFile != null) {
+        data = FormData.fromMap({
+          'nombre': payload['nombre'],
+          'descripcion': payload['descripcion'],
+          'imagen': await MultipartFile.fromFile(
+            imageFile.path,
+            filename: p.basename(imageFile.path),
+          ),
+        });
+      } else {
+        data = payload;
+      }
+
+      final response = await _api.getDio().post(
+        '/api/ejercicios', 
+        data: data,
+        options: Options(
+          contentType: imageFile != null ? 'multipart/form-data' : 'application/json',
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+      return ExerciseDto.fromJson(asApiObject(response.data));
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  Future<ExerciseDto> update(int id, Map<String, dynamic> payload) async {
-    final response = await _api.put(
-      '${ApiConfig.baseUrl}/api/ejercicios/$id',
-      data: payload,
-    );
-    return ExerciseDto.fromJson(asApiObject(response.data));
+  Future<ExerciseDto> update(int id, Map<String, dynamic> payload, {File? imageFile, bool deleteImage = false}) async {
+    try {
+      dynamic data;
+      
+      final Map<String, dynamic> map = {
+        'nombre': payload['nombre'],
+        'descripcion': payload['descripcion'],
+        'deleteImage': deleteImage.toString(),
+      };
+
+      if (imageFile != null) {
+        map['imagen'] = await MultipartFile.fromFile(
+          imageFile.path,
+          filename: p.basename(imageFile.path),
+        );
+        data = FormData.fromMap(map);
+      } else if (deleteImage) {
+        data = FormData.fromMap(map);
+      } else {
+        data = payload;
+      }
+
+      final response = await _api.getDio().put(
+        '/api/ejercicios/$id', 
+        data: data,
+        options: Options(
+          contentType: (imageFile != null || deleteImage) ? 'multipart/form-data' : 'application/json',
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+      return ExerciseDto.fromJson(asApiObject(response.data));
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> delete(int id) async {
@@ -633,9 +686,7 @@ class ExercisesService {
   }
 
   Future<ExerciseDto> reactivate(int id) async {
-    final response = await _api.post(
-      '${ApiConfig.baseUrl}/api/ejercicios/$id/reactivate',
-    );
+    final response = await _api.post('${ApiConfig.baseUrl}/api/ejercicios/$id/reactivate');
     return ExerciseDto.fromJson(asApiObject(response.data));
   }
 }

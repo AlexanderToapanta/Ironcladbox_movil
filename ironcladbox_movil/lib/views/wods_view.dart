@@ -44,15 +44,15 @@ class _WodsViewState extends State<WodsView> {
     }).toList();
   }
 
-  bool _isAdmin(String role) {
+  bool _canManageWods(String role) {
     final r = role.toLowerCase();
-    return r == 'admin' || r == 'administrador';
+    return r == 'admin' || r == 'administrador' || r == 'trainer' || r == 'entrenador';
   }
 
   @override
   Widget build(BuildContext context) {
     final role = context.watch<LoginViewModel>().currentRole;
-    final isAdmin = _isAdmin(role);
+    final canManage = _canManageWods(role);
 
     return Scaffold(
       appBar: AppBar(title: const Text('WODs')),
@@ -86,6 +86,13 @@ class _WodsViewState extends State<WodsView> {
                   _focusedDay = focusedDay;
                   _loadMonthData(focusedDay);
                 },
+                // Corregido: permitir el día actual comparando solo año, mes y día
+                enabledDayPredicate: (day) {
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  final compareDay = DateTime(day.year, day.month, day.day);
+                  return !compareDay.isBefore(today);
+                },
                 calendarStyle: const CalendarStyle(
                   todayDecoration: BoxDecoration(color: Color(0x4DFF3B30), shape: BoxShape.circle),
                   selectedDecoration: BoxDecoration(color: Color(0xFFFF3B30), shape: BoxShape.circle),
@@ -94,19 +101,31 @@ class _WodsViewState extends State<WodsView> {
                 headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
               ),
               const SizedBox(height: 16),
-              if (isAdmin)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showAddWodDialog(_selectedDay ?? _focusedDay),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agregar WOD / Horario'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF3B30),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
+              if (canManage)
+                Builder(
+                  builder: (context) {
+                    final now = DateTime.now();
+                    final todayStart = DateTime(now.year, now.month, now.day);
+                    final selected = _selectedDay ?? _focusedDay;
+                    final selectedStart = DateTime(selected.year, selected.month, selected.day);
+                    final isPast = selectedStart.isBefore(todayStart);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: ElevatedButton.icon(
+                        onPressed: isPast ? null : () {
+                          _showAddWodDialog(selected);
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Agregar WOD / Horario'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isPast ? Colors.grey.shade800 : const Color(0xFFFF3B30),
+                          foregroundColor: isPast ? Colors.grey.shade400 : Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               const SizedBox(height: 16),
               _buildWodDetail(_getEventsForDay(_selectedDay ?? _focusedDay, events), vm),
@@ -142,18 +161,19 @@ class _WodsViewState extends State<WodsView> {
               children: [
                 IroncladFormField(
                   controller: titleController,
-                  label: 'Título (ej: prueba)',
+                  label: 'Nombre del Ejercicio *',
                   icon: Icons.title,
                   validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 IroncladFormField(
                   controller: descController,
-                  label: 'Descripción del WOD',
+                  label: 'Descripción',
                   icon: Icons.description,
+                  keyboardType: TextInputType.multiline,
                   validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   dropdownColor: const Color(0xFF2A2A2A),
                   value: selectedType,
@@ -161,9 +181,9 @@ class _WodsViewState extends State<WodsView> {
                       .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 13))))
                       .toList(),
                   onChanged: (v) => setDialogState(() => selectedType = v),
-                  decoration: const InputDecoration(labelText: 'Tipo de WOD', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Tipo de WOD *', border: OutlineInputBorder()),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   dropdownColor: const Color(0xFF2A2A2A),
                   value: selectedLevel,
@@ -171,11 +191,11 @@ class _WodsViewState extends State<WodsView> {
                       .map((l) => DropdownMenuItem(value: l, child: Text(l, style: const TextStyle(color: Colors.white, fontSize: 13))))
                       .toList(),
                   onChanged: (v) => setDialogState(() => selectedLevel = v),
-                  decoration: const InputDecoration(labelText: 'Nivel', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Nivel *', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 20),
-                const Text('Horarios y Entrenadores', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                const Text('Agrega los horarios en los que se realizará este WOD y asigna un entrenador a cada uno:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 12),
                 ...schedulesPayload.asMap().entries.map((entry) {
                   int idx = entry.key;
                   Map<String, dynamic> schedule = entry.value;
@@ -200,23 +220,24 @@ class _WodsViewState extends State<WodsView> {
                                   }
                                 },
                                 child: InputDecorator(
-                                  decoration: const InputDecoration(labelText: 'Hora', isDense: true),
+                                  decoration: const InputDecoration(labelText: 'Hora *', isDense: true),
                                   child: Text(schedule['hora'], style: const TextStyle(color: Colors.white)),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
-                              width: 60,
+                              width: 80,
                               child: TextFormField(
                                 initialValue: schedule['cupo_maximo'].toString(),
                                 keyboardType: TextInputType.number,
                                 style: const TextStyle(color: Colors.white, fontSize: 13),
-                                decoration: const InputDecoration(labelText: 'Cupo', isDense: true),
+                                decoration: const InputDecoration(labelText: 'Cupo máximo *', isDense: true),
                                 onChanged: (v) => schedule['cupo_maximo'] = int.tryParse(v) ?? 12,
                               ),
                             ),
-                            IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => setDialogState(() => schedulesPayload.removeAt(idx))),
+                            if (schedulesPayload.length > 1)
+                              IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => setDialogState(() => schedulesPayload.removeAt(idx))),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -225,16 +246,18 @@ class _WodsViewState extends State<WodsView> {
                           value: schedule['id_entrenador'],
                           items: trainers.map((t) => DropdownMenuItem(value: t.id, child: Text('${t.nombre} ${t.apellido}', style: const TextStyle(color: Colors.white, fontSize: 12)))).toList(),
                           onChanged: (v) => setDialogState(() => schedule['id_entrenador'] = v),
-                          decoration: const InputDecoration(labelText: 'Entrenador', isDense: true),
+                          decoration: const InputDecoration(labelText: 'Entrenador *', isDense: true),
+                          hint: const Text('Seleccionar entrenador...', style: TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),
                   );
                 }).toList(),
-                TextButton.icon(
+                ElevatedButton.icon(
                   onPressed: () => setDialogState(() => schedulesPayload.add({'hora': '08:00', 'cupo_maximo': 12, 'id_entrenador': null})),
-                  icon: const Icon(Icons.add_circle_outline, color: Colors.orange, size: 20),
-                  label: const Text('Agregar Horario', style: TextStyle(color: Colors.orange, fontSize: 13)),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Agregar Horario', style: TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.black),
                 ),
               ],
             ),
@@ -270,6 +293,8 @@ class _WodsViewState extends State<WodsView> {
     if (dayEvents.isEmpty) return const IroncladEmptyState(icon: Icons.fitness_center, title: 'Sin WOD', message: 'No hay un WOD programado para este día.');
     final wod = hasFullDetail ? fullDetail : dayEvents.first;
 
+    final now = DateTime.now();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -295,7 +320,7 @@ class _WodsViewState extends State<WodsView> {
                   ],
                 ),
               ),
-              if (_isAdmin(context.read<LoginViewModel>().currentRole)) IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () async { await vm.delete(wod.id!); _loadMonthData(_focusedDay); }),
+              if (_canManageWods(context.read<LoginViewModel>().currentRole)) IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () async { await vm.delete(wod.id!); _loadMonthData(_focusedDay); }),
             ],
           ),
           const SizedBox(height: 20),
@@ -312,8 +337,13 @@ class _WodsViewState extends State<WodsView> {
           const SizedBox(height: 24),
           const Row(children: [Icon(Icons.access_time, color: Colors.white, size: 20), SizedBox(width: 8), Text('Horarios Disponibles', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))]),
           const SizedBox(height: 12),
-          if (vm.isLoading && !hasFullDetail) const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator(color: Color(0xFFFF3B30))))
-          else if (wod.horarios.isEmpty) const Text('No hay horarios definidos.', style: TextStyle(color: Colors.grey))
+          if (vm.isLoading) 
+            const Center(child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: CircularProgressIndicator(color: Color(0xFFFF3B30), strokeWidth: 3),
+            ))
+          else if (wod.horarios.isEmpty) 
+            const Text('No hay horarios definidos.', style: TextStyle(color: Colors.grey))
           else SizedBox(
             height: 160,
             child: ListView.builder(
@@ -322,28 +352,65 @@ class _WodsViewState extends State<WodsView> {
               itemBuilder: (context, index) {
                 final h = wod.horarios[index];
                 final percent = (h.cupoMaximo != null && h.cupoMaximo! > 0) ? (h.inscritos ?? 0) / h.cupoMaximo! : 0.0;
-                return Container(
-                  width: 180,
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: const Color(0xFFC8E6C9).withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.3))),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text(h.hora?.substring(0, 5) ?? '--:--', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50))),
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(8)), child: const Text('OK', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold))),
+                
+                // Corregido: Permitir inscripción si es el mismo día y la hora no ha pasado
+                final DateTime classDate = wod.fecha!;
+                final DateTime classDateTime = DateTime(classDate.year, classDate.month, classDate.day, int.parse(h.hora!.split(':')[0]), int.parse(h.hora!.split(':')[1]));
+                final bool canEnroll = !classDateTime.isBefore(now);
+
+                return InkWell(
+                  onTap: canEnroll ? () => _showEnrollConfirmation(h) : null,
+                  child: Container(
+                    width: 180,
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: canEnroll ? const Color(0xFFC8E6C9).withOpacity(0.1) : Colors.white12, 
+                      borderRadius: BorderRadius.circular(10), 
+                      border: Border.all(color: canEnroll ? const Color(0xFF4CAF50).withOpacity(0.3) : Colors.white10)
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Text(h.hora?.substring(0, 5) ?? '--:--', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: canEnroll ? const Color(0xFF4CAF50) : Colors.grey)),
+                        if (!canEnroll) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(8)), child: const Text('PASADO', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)))
+                        else Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(8)), child: const Text('DISPONIBLE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold))),
+                      ]),
+                      const SizedBox(height: 12),
+                      Text('👥 ${h.inscritos ?? 0}/${h.cupoMaximo ?? 12}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: percent, backgroundColor: Colors.white10, color: canEnroll ? const Color(0xFF4CAF50) : Colors.grey, minHeight: 4)),
+                      const Spacer(),
+                      Text(h.entrenadorNombre ?? 'Sin asignar', style: const TextStyle(color: Colors.white60, fontSize: 12), overflow: TextOverflow.ellipsis),
                     ]),
-                    const SizedBox(height: 12),
-                    Text('👥 ${h.inscritos ?? 0}/${h.cupoMaximo ?? 12}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: percent, backgroundColor: Colors.white10, color: const Color(0xFF4CAF50), minHeight: 4)),
-                    const Spacer(),
-                    Text(h.entrenadorNombre ?? 'Sin asignar', style: const TextStyle(color: Colors.white60, fontSize: 12), overflow: TextOverflow.ellipsis),
-                  ]),
+                  ),
                 );
               },
             ),
           ),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  void _showEnrollConfirmation(ScheduleDto schedule) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Inscripción'),
+        content: Text('¿Deseas inscribirte al horario de las ${schedule.hora}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
+          ElevatedButton(
+            onPressed: () async {
+              await context.read<WodsViewModel>().enrollSchedule(schedule.id!);
+              if (mounted) {
+                Navigator.pop(context);
+                context.read<WodsViewModel>().loadByDate(_selectedDay!);
+              }
+            },
+            child: const Text('INSCRIBIRME'),
+          ),
         ],
       ),
     );

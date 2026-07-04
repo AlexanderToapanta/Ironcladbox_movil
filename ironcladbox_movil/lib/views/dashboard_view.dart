@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/auth_service.dart';
 import '../viewmodels/login_viewmodel.dart';
 import 'athletes_view.dart';
 import 'dashboard_home_view.dart';
@@ -24,9 +25,40 @@ class DashboardView extends StatefulWidget {
 
 class _DashboardViewState extends State<DashboardView> {
   int _selectedIndex = 0;
+  late String _currentRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRole = widget.role;
+    _checkUserStatus();
+  }
+
+  Future<void> _checkUserStatus() async {
+    final profile = await AuthService().getProfile();
+    if (profile == null) {
+      if (mounted) {
+        context.read<LoginViewModel>().logout();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginView()),
+          (route) => false,
+        );
+      }
+      return;
+    }
+
+    final newRole = profile['rol_nombre'] ?? profile['rol'] ?? _currentRole;
+    if (mounted && newRole.toLowerCase() != _currentRole.toLowerCase()) {
+      setState(() {
+        _currentRole = newRole;
+      });
+      // Sincronizar con el LoginViewModel para que las sub-vistas vean el cambio
+      context.read<LoginViewModel>().setRole(newRole);
+    }
+  }
 
   List<_DashboardTab> get _tabs {
-    final role = widget.role.toLowerCase();
+    final role = _currentRole.toLowerCase();
 
     if (role == 'administrador' || role == 'admin') {
       return const [
@@ -42,7 +74,7 @@ class _DashboardViewState extends State<DashboardView> {
       return const [
         _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
         _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
-        _DashboardTab('Atletas', Icons.groups, 'Consulta de atletas'),
+        _DashboardTab('Mis Atletas', Icons.groups, 'Consulta de mis atletas'),
         _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Gestión de ejercicios'),
         _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
@@ -53,6 +85,7 @@ class _DashboardViewState extends State<DashboardView> {
       _DashboardTab('WODs', Icons.fitness_center, 'Consultar WOD'),
       _DashboardTab('Membresía', Icons.card_membership, 'Mi Membresía'),
       _DashboardTab('Progreso', Icons.show_chart, 'Registrar progreso'),
+      _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Biblioteca de ejercicios'),
       _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
     ];
   }
@@ -60,7 +93,7 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   Widget build(BuildContext context) {
     final tabs = _tabs;
-    final pages = _pagesForRole(widget.role);
+    final pages = _pagesForRole(_currentRole);
 
     return Scaffold(
       appBar: AppBar(
@@ -136,6 +169,7 @@ List<Widget> _pagesForRole(String role) {
     WodsView(),
     MyMembershipView(),
     ProgressView(),
+    ExercisesView(),
     ProfileView(),
   ];
 }

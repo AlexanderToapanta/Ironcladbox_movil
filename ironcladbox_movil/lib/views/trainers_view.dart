@@ -105,6 +105,7 @@ class _TrainersViewState extends State<TrainersView> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_trainers',
         onPressed: _showAddTrainerDialog,
         backgroundColor: const Color(0xFFFF3B30),
         child: const Icon(Icons.person_add, color: Colors.white),
@@ -216,7 +217,8 @@ class _TrainersViewState extends State<TrainersView> {
               onPressed: () async {
                 if (birthDate == null) return;
                 
-                final password = DateFormat('ddMMyyyy').format(birthDate!);
+                // Password is Aa + DOB in ddmmyyyy format to pass backend uppercase and lowercase validation
+                final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
                 
                 await AuthService().register(
                   email: emailController.text.trim(),

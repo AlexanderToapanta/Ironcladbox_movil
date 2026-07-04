@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../viewmodels/login_viewmodel.dart';
 import '../viewmodels/splash_viewmodel.dart';
+import '../viewmodels/login_viewmodel.dart';
 import 'dashboard_view.dart';
 import 'login_view.dart';
 
@@ -31,13 +33,23 @@ class _SplashViewState extends State<SplashView> {
           _navigationHandled = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => viewModel.hasSession
-                    ? DashboardView(role: viewModel.role)
-                    : const LoginView(),
-              ),
-            );
+            
+            if (viewModel.hasSession) {
+              // Actualizar el rol en el LoginViewModel para que las vistas lo reconozcan
+              context.read<LoginViewModel>().setRole(viewModel.role);
+              
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => DashboardView(role: viewModel.role),
+                ),
+              );
+            } else {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => const LoginView(),
+                ),
+              );
+            }
           });
         }
 

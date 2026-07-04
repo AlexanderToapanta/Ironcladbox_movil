@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 
 import '../models/backend_api_models.dart';
 import '../services/backend_api_services.dart';
@@ -237,6 +238,20 @@ class AthletesViewModel extends BaseCollectionViewModel<AthleteDto> {
     }
     _setLoading(false);
   }
+
+  Future<void> loadMyAthletes() async {
+    _setLoading(true);
+    _setError('');
+    try {
+      final trainerService = TrainersService();
+      final data = await trainerService.getMyAthletes();
+      final athletes = data.whereType<Map>().map((item) => AthleteDto.fromJson(Map<String, dynamic>.from(item))).toList();
+      _setItems(athletes);
+    } catch (e) {
+      _setError(extractServiceError(e));
+    }
+    _setLoading(false);
+  }
 }
 
 class TrainersViewModel extends BaseCollectionViewModel<TrainerDto> {
@@ -425,15 +440,11 @@ class WodsViewModel extends BaseCollectionViewModel<WodDto> {
   final WodsService _service = WodsService();
 
   Future<void> loadByMonth(int year, int month) async {
-    print("WodsViewModel: loadByMonth($year, $month)");
     _setLoading(true);
     _setError('');
     try {
-      final items = await _service.getByMonth(year, month);
-      print("WodsViewModel: Loaded ${items.length} wods");
-      _setItems(items);
+      _setItems(await _service.getByMonth(year, month));
     } catch (e) {
-      print("WodsViewModel ERROR: $e");
       _setError(extractServiceError(e));
     }
     _setLoading(false);
@@ -514,7 +525,7 @@ class WodsViewModel extends BaseCollectionViewModel<WodDto> {
             entrenadorId: current.entrenadorId,
             entrenadorNombre: current.entrenadorNombre,
             horarios: schedules,
-          ) as WodDto?,
+          ),
         );
       }
     } catch (e) {
@@ -632,28 +643,32 @@ class ExercisesViewModel extends BaseCollectionViewModel<ExerciseDto> {
     }
   }
 
-  Future<void> create(Map<String, dynamic> payload) async {
+  Future<void> create(Map<String, dynamic> payload, {File? imageFile}) async {
     _setLoading(true);
     _setError('');
     try {
-      await _service.create(payload);
+      await _service.create(payload, imageFile: imageFile);
       await loadAll();
     } catch (e) {
       _setError(extractServiceError(e));
+      rethrow;
+    } finally {
+      _setLoading(false);
     }
-    _setLoading(false);
   }
 
-  Future<void> update(int id, Map<String, dynamic> payload) async {
+  Future<void> update(int id, Map<String, dynamic> payload, {File? imageFile, bool deleteImage = false}) async {
     _setLoading(true);
     _setError('');
     try {
-      await _service.update(id, payload);
+      await _service.update(id, payload, imageFile: imageFile, deleteImage: deleteImage);
       await loadAll();
     } catch (e) {
       _setError(extractServiceError(e));
+      rethrow;
+    } finally {
+      _setLoading(false);
     }
-    _setLoading(false);
   }
 
   Future<void> delete(int id) async {

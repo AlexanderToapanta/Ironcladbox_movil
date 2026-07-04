@@ -29,7 +29,7 @@ class ApiService {
       ),
     );
     
-    // Agregar interceptor para tokens JWT
+    // Agregar interceptor para tokens JWT y manejo de sesiones
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -39,16 +39,29 @@ class ApiService {
           }
           return handler.next(options);
         },
+        onResponse: (response, handler) {
+          // Si el backend indica que el usuario está desactivado o la sesión expiró en el body
+          if (response.data is Map && response.data['sessionExpired'] == true) {
+            _handleSessionExpired();
+          }
+          return handler.next(response);
+        },
         onError: (error, handler) {
-          // Manejar errores 401 (token expirado)
-          if (error.response?.statusCode == 401) {
-            // Limpiar token y redirigir a login
-            _secureStorage.delete(key: 'jwt_token');
+          // Manejar errores 401 (token expirado) o 403 (cuenta desactivada/prohibido)
+          if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
+            _handleSessionExpired();
           }
           return handler.next(error);
         },
       ),
     );
+  }
+
+  void _handleSessionExpired() {
+    _secureStorage.delete(key: 'jwt_token');
+    _secureStorage.delete(key: 'user_role');
+    // Aquí podrías usar una GlobalKey para navegar al login, 
+    // pero el interceptor ya limpia los datos para que el próximo reinicio pida login.
   }
   
   /// GET request
