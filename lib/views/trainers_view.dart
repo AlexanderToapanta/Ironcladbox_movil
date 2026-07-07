@@ -122,6 +122,7 @@ class _TrainersViewState extends State<TrainersView> {
     final specialtyController = TextEditingController();
     final expController = TextEditingController();
     final certController = TextEditingController();
+    final bioController = TextEditingController();
     DateTime? birthDate;
 
     showDialog(
@@ -208,6 +209,13 @@ class _TrainersViewState extends State<TrainersView> {
                   icon: Icons.card_membership,
                   validator: (v) => null,
                 ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: bioController,
+                  label: 'Biografía',
+                  icon: Icons.description,
+                  validator: (v) => null,
+                ),
               ],
             ),
           ),
@@ -217,7 +225,6 @@ class _TrainersViewState extends State<TrainersView> {
               onPressed: () async {
                 if (birthDate == null) return;
                 
-                // Password is Aa + DOB in ddmmyyyy format to pass backend uppercase and lowercase validation
                 final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
                 
                 await AuthService().register(
@@ -252,6 +259,7 @@ class _TrainersViewState extends State<TrainersView> {
     final specialtyController = TextEditingController(text: trainer.especialidad);
     final expController = TextEditingController(text: trainer.aniosExperiencia?.toString());
     final certController = TextEditingController(text: trainer.certificaciones);
+    final bioController = TextEditingController(text: trainer.biografia);
 
     showDialog(
       context: context,
@@ -315,6 +323,13 @@ class _TrainersViewState extends State<TrainersView> {
                 icon: Icons.card_membership,
                 validator: (v) => null,
               ),
+              const SizedBox(height: 12),
+              IroncladFormField(
+                controller: bioController,
+                label: 'Biografía',
+                icon: Icons.description,
+                validator: (v) => null,
+              ),
             ],
           ),
         ),
@@ -330,6 +345,7 @@ class _TrainersViewState extends State<TrainersView> {
                 'especialidad': specialtyController.text.trim(),
                 'anios_experiencia': int.tryParse(expController.text),
                 'certificaciones': certController.text.trim(),
+                'biografia': bioController.text.trim(),
               });
               if (mounted) Navigator.pop(context);
             },

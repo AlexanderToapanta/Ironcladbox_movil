@@ -246,6 +246,9 @@ class _AthletesViewState extends State<AthletesView> {
     final emailController = TextEditingController();
     final phoneController = TextEditingController();
     final addressController = TextEditingController();
+    final weightController = TextEditingController();
+    final heightController = TextEditingController();
+    final emergencyController = TextEditingController();
     DateTime? birthDate;
 
     showDialog(
@@ -313,6 +316,29 @@ class _AthletesViewState extends State<AthletesView> {
                   icon: Icons.location_on,
                   validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                 ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: weightController,
+                  label: 'Peso (kg)',
+                  icon: Icons.monitor_weight,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => null,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: heightController,
+                  label: 'Altura (m)',
+                  icon: Icons.height,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => null,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: emergencyController,
+                  label: 'Contacto de Emergencia',
+                  icon: Icons.contact_emergency,
+                  validator: (v) => null,
+                ),
               ],
             ),
           ),
@@ -322,7 +348,6 @@ class _AthletesViewState extends State<AthletesView> {
               onPressed: () async {
                 if (birthDate == null) return;
                 
-                // Password is Aa + DOB in ddmmyyyy format to pass backend uppercase and lowercase validation
                 final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
                 
                 await AuthService().register(
@@ -333,6 +358,8 @@ class _AthletesViewState extends State<AthletesView> {
                   phone: phoneController.text.trim(),
                   address: addressController.text.trim(),
                   birthDate: birthDate,
+                  weight: double.tryParse(weightController.text),
+                  height: double.tryParse(heightController.text),
                   role: 'ATLETA',
                 );
                 
@@ -352,6 +379,7 @@ class _AthletesViewState extends State<AthletesView> {
   void _showEditAthleteDialog(AthleteDto athlete) {
     final nameController = TextEditingController(text: athlete.nombre);
     final lastNameController = TextEditingController(text: athlete.apellido);
+    final emailController = TextEditingController(text: athlete.email);
     final phoneController = TextEditingController(text: athlete.telefono);
     final addressController = TextEditingController(text: athlete.direccion);
 
@@ -378,6 +406,14 @@ class _AthletesViewState extends State<AthletesView> {
               ),
               const SizedBox(height: 12),
               IroncladFormField(
+                controller: emailController,
+                label: 'Email',
+                icon: Icons.email,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              IroncladFormField(
                 controller: phoneController,
                 label: 'Teléfono',
                 icon: Icons.phone,
@@ -400,8 +436,10 @@ class _AthletesViewState extends State<AthletesView> {
               await context.read<AthletesViewModel>().update(athlete.id!, {
                 'nombre': nameController.text.trim(),
                 'apellido': lastNameController.text.trim(),
+                'email': emailController.text.trim(),
                 'telefono': phoneController.text.trim(),
                 'direccion': addressController.text.trim(),
+                'contacto_emergencia': '',
               });
               if (mounted) Navigator.pop(context);
             },
