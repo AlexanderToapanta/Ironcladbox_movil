@@ -11,6 +11,7 @@ import 'athletes_view.dart';
 import 'dashboard_home_view.dart';
 import 'exercises_view.dart';
 import 'login_view.dart';
+import 'memberships_view.dart';
 import 'my_membership_view.dart';
 import 'profile_view.dart';
 import 'progress_view.dart';
@@ -95,9 +96,11 @@ class _DashboardViewState extends State<DashboardView> {
     if (role == 'administrador' || role == 'admin') {
       return const [
         _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
-        _DashboardTab('Atletas', Icons.groups, 'Gestión de atletas'),
+        _DashboardTab('Atletas', Icons.groups, 'Gestion de atletas'),
         _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
-        _DashboardTab('Entrenadores', Icons.badge, 'Gestión de entrenadores'),
+        _DashboardTab('Entrenadores', Icons.badge, 'Gestion de entrenadores'),
+        _DashboardTab('Membresias', Icons.card_membership, 'Gestion de membresias'),
+        _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Ejercicios'),
         _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
     }
@@ -212,6 +215,8 @@ List<Widget> _pagesForRole(String role) {
       AthletesView(),
       WodsView(),
       TrainersView(),
+      MembershipsView(),
+      ExercisesView(),
       ProfileView(),
     ];
   }
