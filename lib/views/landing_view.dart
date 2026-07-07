@@ -131,7 +131,20 @@ class _LandingViewState extends State<LandingView> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _red))
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: _red),
+                  SizedBox(height: 16),
+                  Text('Conectando con el servidor...',
+                      style: TextStyle(color: _gray, fontSize: 13)),
+                  SizedBox(height: 4),
+                  Text('Puede tomar hasta 2 minutos la primera vez',
+                      style: TextStyle(color: _gray, fontSize: 11)),
+                ],
+              ),
+            )
           : LayoutBuilder(
               builder: (context, constraints) {
                 final w = constraints.maxWidth;

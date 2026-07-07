@@ -9,7 +9,7 @@
 /// - http://localhost:3000 (para dispositivo local)
 
 class ApiConfig {
-  static const String baseUrl = 'https://ironcladbox-1.onrender.com';
+  static const String baseUrl = 'http://192.168.100.75:3000';
 
   // Auth
   static const String loginEndpoint = '/api/auth/login';
@@ -84,7 +84,7 @@ class ApiConfig {
   };
   
   // Timeouts
-  static const int connectTimeout = 90000; // 90 segundos (Render free tier cold start)
-  static const int receiveTimeout = 90000; // 90 segundos
-  static const int sendTimeout = 90000; // 90 segundos
+  static const int connectTimeout = 120000; // 120 segundos (Render cold start)
+  static const int receiveTimeout = 120000;
+  static const int sendTimeout = 120000;
 }
