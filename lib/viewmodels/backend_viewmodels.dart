@@ -3,16 +3,19 @@ import 'dart:io';
 
 import '../models/backend_api_models.dart';
 import '../services/backend_api_services.dart';
+import '../services/api_service.dart';
 import '../services/socket_service.dart';
 
 abstract class BaseCollectionViewModel<T> extends ChangeNotifier {
   bool _isLoading = false;
   String _errorMessage = '';
+  String _statusMessage = '';
   List<T> _items = const [];
   T? _selectedItem;
 
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
+  String get statusMessage => _statusMessage;
   List<T> get items => _items;
   T? get selectedItem => _selectedItem;
 
@@ -23,6 +26,12 @@ abstract class BaseCollectionViewModel<T> extends ChangeNotifier {
 
   void _setError(String value) {
     _errorMessage = value;
+    _statusMessage = '';
+    notifyListeners();
+  }
+
+  void _setStatus(String value) {
+    _statusMessage = value;
     notifyListeners();
   }
 
@@ -38,7 +47,18 @@ abstract class BaseCollectionViewModel<T> extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = '';
+    _statusMessage = '';
     notifyListeners();
+  }
+
+  void _checkWriteResult(String successMsg) {
+    final api = ApiService();
+    if (api.lastWriteQueued) {
+      _setStatus('Sin conexion - $successMsg se guardo localmente');
+      api.clearLastWriteFlag();
+    } else {
+      _setStatus(successMsg);
+    }
   }
 
   void clearSelection() {
@@ -85,6 +105,7 @@ class MembershipsViewModel extends BaseCollectionViewModel<MembershipDto> {
     try {
       await _service.create(payload);
       await loadAll();
+      _checkWriteResult('Membresia creada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -97,6 +118,7 @@ class MembershipsViewModel extends BaseCollectionViewModel<MembershipDto> {
     try {
       await _service.update(id, payload);
       await loadAll();
+      _checkWriteResult('Membresia actualizada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -109,6 +131,7 @@ class MembershipsViewModel extends BaseCollectionViewModel<MembershipDto> {
     try {
       await _service.delete(id);
       await loadAll();
+      _checkWriteResult('Membresia eliminada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -156,6 +179,7 @@ class AthletesViewModel extends BaseCollectionViewModel<AthleteDto> {
     try {
       await _service.create(payload);
       await loadAll();
+      _checkWriteResult('Atleta creado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -168,6 +192,7 @@ class AthletesViewModel extends BaseCollectionViewModel<AthleteDto> {
     try {
       await _service.update(id, payload);
       await loadAll();
+      _checkWriteResult('Atleta actualizado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -180,6 +205,7 @@ class AthletesViewModel extends BaseCollectionViewModel<AthleteDto> {
     try {
       await _service.updateMembership(id, payload);
       await loadAll();
+      _checkWriteResult('Membresia asignada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -192,6 +218,7 @@ class AthletesViewModel extends BaseCollectionViewModel<AthleteDto> {
     try {
       await _service.updateStatus(id, payload);
       await loadAll();
+      _checkWriteResult('Estado actualizado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -204,6 +231,7 @@ class AthletesViewModel extends BaseCollectionViewModel<AthleteDto> {
     try {
       await _service.delete(id);
       await loadAll();
+      _checkWriteResult('Atleta eliminado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -320,6 +348,7 @@ class TrainersViewModel extends BaseCollectionViewModel<TrainerDto> {
     try {
       await _service.create(payload);
       await loadAll();
+      _checkWriteResult('Entrenador creado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -332,6 +361,7 @@ class TrainersViewModel extends BaseCollectionViewModel<TrainerDto> {
     try {
       await _service.update(id, payload);
       await loadAll();
+      _checkWriteResult('Entrenador actualizado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -344,6 +374,7 @@ class TrainersViewModel extends BaseCollectionViewModel<TrainerDto> {
     try {
       await _service.updateStatus(id, payload);
       await loadAll();
+      _checkWriteResult('Estado actualizado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -356,6 +387,7 @@ class TrainersViewModel extends BaseCollectionViewModel<TrainerDto> {
     try {
       await _service.delete(id);
       await loadAll();
+      _checkWriteResult('Entrenador eliminado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -414,6 +446,7 @@ class ClassesViewModel extends BaseCollectionViewModel<ClassDto> {
     try {
       await _service.create(payload);
       await loadAll();
+      _checkWriteResult('Clase creada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -426,6 +459,7 @@ class ClassesViewModel extends BaseCollectionViewModel<ClassDto> {
     try {
       await _service.update(id, payload);
       await loadAll();
+      _checkWriteResult('Clase actualizada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -438,6 +472,7 @@ class ClassesViewModel extends BaseCollectionViewModel<ClassDto> {
     try {
       await _service.delete(id);
       await loadAll();
+      _checkWriteResult('Clase eliminada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -704,6 +739,7 @@ class ExercisesViewModel extends BaseCollectionViewModel<ExerciseDto> {
     try {
       await _service.create(payload, imageFile: imageFile);
       await loadAll();
+      _checkWriteResult('Ejercicio creado');
     } catch (e) {
       _setError(extractServiceError(e));
       rethrow;
@@ -718,6 +754,7 @@ class ExercisesViewModel extends BaseCollectionViewModel<ExerciseDto> {
     try {
       await _service.update(id, payload, imageFile: imageFile, deleteImage: deleteImage);
       await loadAll();
+      _checkWriteResult('Ejercicio actualizado');
     } catch (e) {
       _setError(extractServiceError(e));
       rethrow;
@@ -732,6 +769,7 @@ class ExercisesViewModel extends BaseCollectionViewModel<ExerciseDto> {
     try {
       await _service.delete(id);
       await loadAll();
+      _checkWriteResult('Ejercicio eliminado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -744,6 +782,7 @@ class ExercisesViewModel extends BaseCollectionViewModel<ExerciseDto> {
     try {
       await _service.reactivate(id);
       await loadAll();
+      _checkWriteResult('Ejercicio reactivado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -790,6 +829,7 @@ class ProgressViewModel extends BaseCollectionViewModel<ProgressDto> {
     try {
       await _service.actualizarMarca(payload);
       await loadAll();
+      _checkWriteResult('Marca actualizada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -802,6 +842,7 @@ class ProgressViewModel extends BaseCollectionViewModel<ProgressDto> {
     try {
       await _service.eliminarMarca(exerciseId);
       await loadAll();
+      _checkWriteResult('Marca eliminada');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -834,6 +875,7 @@ class ContactsViewModel extends BaseCollectionViewModel<ContactDto> {
     try {
       await _service.send(payload);
       await loadAll();
+      _checkWriteResult('Mensaje enviado');
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -846,6 +888,7 @@ class ContactsViewModel extends BaseCollectionViewModel<ContactDto> {
     try {
       await _service.updateStatus(id, status);
       await loadAll();
+      _checkWriteResult('Estado actualizado');
     } catch (e) {
       _setError(extractServiceError(e));
     }

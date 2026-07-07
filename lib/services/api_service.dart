@@ -13,8 +13,10 @@ class ApiService {
   final CacheService _cache = CacheService();
   final SyncQueueService _queue = SyncQueueService();
   bool _isOffline = false;
+  bool _lastWriteQueued = false;
 
   bool get isOffline => _isOffline;
+  bool get lastWriteQueued => _lastWriteQueued;
   int get pendingCount => _queue.pendingCount;
 
   factory ApiService() {
@@ -116,6 +118,7 @@ class ApiService {
     } on DioException catch (e) {
       if (_isConnectionError(e)) {
         _isOffline = true;
+        _lastWriteQueued = true;
         _queue.enqueue('POST', path, body: data is Map<String, dynamic> ? data : null);
         return Response(
           requestOptions: RequestOptions(path: path),
@@ -137,6 +140,7 @@ class ApiService {
     } on DioException catch (e) {
       if (_isConnectionError(e)) {
         _isOffline = true;
+        _lastWriteQueued = true;
         _queue.enqueue('PUT', path, body: data is Map<String, dynamic> ? data : null);
         return Response(
           requestOptions: RequestOptions(path: path),
@@ -157,6 +161,7 @@ class ApiService {
     } on DioException catch (e) {
       if (_isConnectionError(e)) {
         _isOffline = true;
+        _lastWriteQueued = true;
         _queue.enqueue(
           'PATCH',
           path,
@@ -186,6 +191,7 @@ class ApiService {
     } on DioException catch (e) {
       if (_isConnectionError(e)) {
         _isOffline = true;
+        _lastWriteQueued = true;
         _queue.enqueue('DELETE', path);
         return Response(
           requestOptions: RequestOptions(path: path),
@@ -244,5 +250,10 @@ class ApiService {
 
   void forceOnline() {
     _isOffline = false;
+    _lastWriteQueued = false;
+  }
+
+  void clearLastWriteFlag() {
+    _lastWriteQueued = false;
   }
 }

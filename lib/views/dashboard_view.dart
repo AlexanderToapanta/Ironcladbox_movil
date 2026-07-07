@@ -139,16 +139,23 @@ class _DashboardViewState extends State<DashboardView> {
           if (_isOffline || ApiService().isOffline)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: Colors.orange.shade800,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: ApiService().pendingCount > 0 ? Colors.red.shade700 : Colors.orange.shade800,
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.wifi_off, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
+                  Icon(
+                    ApiService().pendingCount > 0 ? Icons.sync_problem : Icons.wifi_off,
+                    color: Colors.white, size: 20,
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Sin conexion - ${ApiService().pendingCount > 0 ? "${ApiService().pendingCount} cambios pendientes" : "Mostrando datos en cache"}',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                      ApiService().pendingCount > 0
+                          ? 'SIN CONEXION - ${ApiService().pendingCount} cambios pendientes - Toca para reintentar'
+                          : 'Sin conexion - Mostrando datos en cache - Toca para reconectar',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
                   GestureDetector(
@@ -158,7 +165,21 @@ class _DashboardViewState extends State<DashboardView> {
                       ApiService().drainQueue();
                       _refreshAllViewModels();
                     },
-                    child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh, color: Colors.white, size: 18),
+                          SizedBox(width: 4),
+                          Text('RECONECTAR', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
