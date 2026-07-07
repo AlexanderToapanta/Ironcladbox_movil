@@ -346,22 +346,19 @@ class _AthletesViewState extends State<AthletesView> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                if (birthDate == null) return;
-                
-                final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
-                
-                await AuthService().register(
-                  email: emailController.text.trim(),
-                  password: password,
-                  name: nameController.text.trim(),
-                  lastName: lastNameController.text.trim(),
-                  phone: phoneController.text.trim(),
-                  address: addressController.text.trim(),
-                  birthDate: birthDate,
-                  weight: double.tryParse(weightController.text),
-                  height: double.tryParse(heightController.text),
-                  role: 'ATLETA',
-                );
+                final bd = birthDate ?? DateTime.now().subtract(const Duration(days: 365 * 20));
+                final vm = context.read<AthletesViewModel>();
+                await vm.create({
+                  'nombre': nameController.text.trim(),
+                  'apellido': lastNameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(bd),
+                  'telefono': phoneController.text.trim(),
+                  'direccion': addressController.text.trim(),
+                  'contacto_emergencia': emergencyController.text.trim(),
+                  'peso': double.tryParse(weightController.text) ?? 0,
+                  'altura': double.tryParse(heightController.text) ?? 0,
+                });
                 
                 if (mounted) {
                   Navigator.pop(context);

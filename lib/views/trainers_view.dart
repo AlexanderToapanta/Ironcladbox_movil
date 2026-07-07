@@ -223,20 +223,19 @@ class _TrainersViewState extends State<TrainersView> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                if (birthDate == null) return;
-                
-                final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
-                
-                await AuthService().register(
-                  email: emailController.text.trim(),
-                  password: password,
-                  name: nameController.text.trim(),
-                  lastName: lastNameController.text.trim(),
-                  phone: phoneController.text.trim(),
-                  address: addressController.text.trim(),
-                  birthDate: birthDate,
-                  role: 'ENTRENADOR',
-                );
+                final bd = birthDate ?? DateTime.now().subtract(const Duration(days: 365 * 25));
+                final vm = context.read<TrainersViewModel>();
+                await vm.create({
+                  'nombre': nameController.text.trim(),
+                  'apellido': lastNameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(bd),
+                  'especialidad': specialtyController.text.trim(),
+                  'anios_experiencia': int.tryParse(expController.text.trim()) ?? 0,
+                  'certificaciones': certController.text.trim(),
+                  'biografia': bioController.text.trim(),
+                  'direccion': addressController.text.trim(),
+                });
                 
                 if (mounted) {
                   Navigator.pop(context);

@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
 import '../services/socket_service.dart';
+import '../services/api_service.dart';
 
 class SplashViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final SocketService _socketService = SocketService();
+  final ApiService _apiService = ApiService();
 
   bool _isLoading = true;
   bool _hasSession = false;
@@ -26,6 +28,7 @@ class SplashViewModel extends ChangeNotifier {
       if (_hasSession) {
         _role = (await _authService.getRole()) ?? 'athlete';
         _socketService.connect();
+        _apiService.drainQueue();
       }
     } catch (e) {
       _hasSession = false;
