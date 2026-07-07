@@ -84,7 +84,7 @@ class ApiConfig {
   };
   
   // Timeouts
-  static const int connectTimeout = 30000; // 30 segundos
-  static const int receiveTimeout = 30000; // 30 segundos
-  static const int sendTimeout = 30000; // 30 segundos
+  static const int connectTimeout = 90000; // 90 segundos (Render free tier cold start)
+  static const int receiveTimeout = 90000; // 90 segundos
+  static const int sendTimeout = 90000; // 90 segundos
 }

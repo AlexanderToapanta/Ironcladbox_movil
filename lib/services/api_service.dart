@@ -241,4 +241,8 @@ class ApiService {
   }
 
   Dio getDio() => _dio;
+
+  void forceOnline() {
+    _isOffline = false;
+  }
 }

@@ -153,6 +153,7 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   GestureDetector(
                     onTap: () {
+                      ApiService().forceOnline();
                       setState(() => _isOffline = false);
                       ApiService().drainQueue();
                       _refreshAllViewModels();
