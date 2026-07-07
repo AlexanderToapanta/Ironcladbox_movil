@@ -18,6 +18,7 @@ class _LandingViewState extends State<LandingView> {
   List<dynamic> _memberships = [];
   Map<String, int> _stats = {};
   bool _loading = true;
+  bool _connectionError = false;
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -56,25 +57,30 @@ class _LandingViewState extends State<LandingView> {
 
   Future<void> _loadData() async {
     final api = ApiService();
+    bool anySuccess = false;
     try {
       final trainersRes = await api.get(ApiConfig.trainers);
-      if (trainersRes.data is Map && trainersRes.data['data'] is List) _trainers = trainersRes.data['data'];
+      if (trainersRes.data is Map && trainersRes.data['data'] is List) { _trainers = trainersRes.data['data']; anySuccess = true; }
     } catch (_) {}
     try {
       final classesRes = await api.get(ApiConfig.classesAvailable);
-      if (classesRes.data is Map && classesRes.data['data'] is List) _classes = classesRes.data['data'];
+      if (classesRes.data is Map && classesRes.data['data'] is List) { _classes = classesRes.data['data']; anySuccess = true; }
     } catch (_) {}
     try {
       final membersRes = await api.get(ApiConfig.membershipsEndpoint);
-      if (membersRes.data is Map && membersRes.data['data'] is List) _memberships = membersRes.data['data'];
+      if (membersRes.data is Map && membersRes.data['data'] is List) { _memberships = membersRes.data['data']; anySuccess = true; }
     } catch (_) {}
     try {
       final statsRes = await api.get(ApiConfig.adminStats);
       if (statsRes.data is Map && statsRes.data['data'] is Map) {
         _stats = Map<String, int>.from((statsRes.data['data'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt())));
+        anySuccess = true;
       }
     } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      _connectionError = !anySuccess && !_trainers.isNotEmpty && !_classes.isNotEmpty && !_memberships.isNotEmpty;
+      setState(() => _loading = false);
+    }
   }
 
   Future<void> _sendContact() async {
@@ -148,10 +154,25 @@ class _LandingViewState extends State<LandingView> {
           : LayoutBuilder(
               builder: (context, constraints) {
                 final w = constraints.maxWidth;
-                return SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildHero(w),
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        if (_connectionError)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            color: Colors.red.shade800,
+                            child: const Column(
+                              children: [
+                                Icon(Icons.cloud_off, color: Colors.white, size: 32),
+                                SizedBox(height: 8),
+                                Text('SIN CONEXION AL SERVIDOR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+                                SizedBox(height: 4),
+                                Text('Verifica que el backend esté corriendo en la laptop\ny que el celular esté en el mismo WiFi', style: TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center),
+                              ],
+                            ),
+                          ),
+                        _buildHero(w),
                       _buildAbout(w),
                       _buildClasses(w),
                       _buildTrainers(w),
