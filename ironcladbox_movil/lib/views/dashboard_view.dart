@@ -57,7 +57,7 @@ class _DashboardViewState extends State<DashboardView> {
         );
       }
     });
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 2), (_) {
       if (mounted) _refreshAllViewModels();
     });
   }

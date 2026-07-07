@@ -217,11 +217,18 @@ class AuthService {
     try {
       final token = await _apiService.getToken();
       if (token == null) return false;
-      
+
       final response = await _apiService.get(ApiConfig.verifyTokenEndpoint);
       return response.statusCode == 200;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        return false;
+      }
+      final token = await _apiService.getToken();
+      return token != null;
     } catch (e) {
-      return false;
+      final token = await _apiService.getToken();
+      return token != null;
     }
   }
   

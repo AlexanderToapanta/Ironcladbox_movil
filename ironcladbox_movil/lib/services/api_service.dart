@@ -15,6 +15,7 @@ class ApiService {
   final SyncQueueService _queue = SyncQueueService();
   bool _isOffline = false;
   bool _lastWriteQueued = false;
+  bool _sessionExpiredFired = false;
 
   final _sessionExpiredController = StreamController<void>.broadcast();
   Stream<void> get onSessionExpired => _sessionExpiredController.stream;
@@ -22,6 +23,14 @@ class ApiService {
   bool get isOffline => _isOffline;
   bool get lastWriteQueued => _lastWriteQueued;
   int get pendingCount => _queue.pendingCount;
+
+  static const _publicPaths = [
+    '/api/trainers',
+    '/api/classes/available',
+    '/api/auth/memberships',
+    '/api/admin/stats',
+    '/api/contact',
+  ];
 
   factory ApiService() {
     return _instance;
@@ -47,9 +56,13 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _secureStorage.read(key: 'jwt_token');
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+          final path = options.path;
+          final isPublic = _publicPaths.any((p) => path.startsWith(p));
+          if (!isPublic) {
+            final token = await _secureStorage.read(key: 'jwt_token');
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
           }
           return handler.next(options);
         },
@@ -65,7 +78,7 @@ class ApiService {
           return handler.next(response);
         },
         onError: (error, handler) {
-          if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
+          if (error.response?.statusCode == 401) {
             _handleSessionExpired();
           }
           return handler.next(error);
@@ -75,6 +88,8 @@ class ApiService {
   }
 
   void _handleSessionExpired() {
+    if (_sessionExpiredFired) return;
+    _sessionExpiredFired = true;
     _secureStorage.delete(key: 'jwt_token');
     _secureStorage.delete(key: 'user_role');
     _cache.clear();
@@ -108,9 +123,6 @@ class ApiService {
           );
         }
       }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
-      }
       _isOffline = _isConnectionError(e);
       rethrow;
     }
@@ -134,9 +146,6 @@ class ApiService {
           extra: {'queued': true},
         );
       }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
-      }
       rethrow;
     }
   }
@@ -158,9 +167,6 @@ class ApiService {
           data: {'success': true, 'message': 'Guardado localmente. Se sincronizara al reconectar.', 'queued': true},
           extra: {'queued': true},
         );
-      }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
       }
       rethrow;
     }
@@ -191,9 +197,6 @@ class ApiService {
           extra: {'queued': true},
         );
       }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
-      }
       rethrow;
     }
   }
@@ -215,9 +218,6 @@ class ApiService {
           data: {'success': true, 'message': 'Eliminado localmente. Se sincronizara al reconectar.', 'queued': true},
           extra: {'queued': true},
         );
-      }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
       }
       rethrow;
     }
@@ -242,6 +242,7 @@ class ApiService {
   }
 
   Future<void> setToken(String token) async {
+    _sessionExpiredFired = false;
     await _secureStorage.write(key: 'jwt_token', value: token);
   }
 
