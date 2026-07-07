@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import '../core/config/api_config.dart';
 import 'login_view.dart';
 import 'dashboard_view.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 
 class LandingView extends StatefulWidget {
   const LandingView({super.key});
@@ -55,21 +55,21 @@ class _LandingViewState extends State<LandingView> {
   }
 
   Future<void> _loadData() async {
-    final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl, connectTimeout: const Duration(seconds: 8), receiveTimeout: const Duration(seconds: 8)));
+    final api = ApiService();
     try {
-      final trainersRes = await dio.get('/api/trainers');
+      final trainersRes = await api.get(ApiConfig.trainers);
       if (trainersRes.data is Map && trainersRes.data['data'] is List) _trainers = trainersRes.data['data'];
     } catch (_) {}
     try {
-      final classesRes = await dio.get('/api/classes/available');
+      final classesRes = await api.get(ApiConfig.classesAvailable);
       if (classesRes.data is Map && classesRes.data['data'] is List) _classes = classesRes.data['data'];
     } catch (_) {}
     try {
-      final membersRes = await dio.get('/api/auth/memberships');
+      final membersRes = await api.get(ApiConfig.membershipsEndpoint);
       if (membersRes.data is Map && membersRes.data['data'] is List) _memberships = membersRes.data['data'];
     } catch (_) {}
     try {
-      final statsRes = await dio.get('/api/admin/stats');
+      final statsRes = await api.get(ApiConfig.adminStats);
       if (statsRes.data is Map && statsRes.data['data'] is Map) {
         _stats = Map<String, int>.from((statsRes.data['data'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt())));
       }
@@ -87,8 +87,7 @@ class _LandingViewState extends State<LandingView> {
     }
     setState(() => _sending = true);
     try {
-      final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl));
-      await dio.post('/api/contact', data: {'name': name, 'email': email, 'phone': _phoneController.text.trim(), 'message': msg, 'website': ''});
+      await ApiService().post(ApiConfig.contact, data: {'name': name, 'email': email, 'phone': _phoneController.text.trim(), 'message': msg, 'website': ''});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensaje enviado exitosamente!'), backgroundColor: Colors.green));
         _nameController.clear();

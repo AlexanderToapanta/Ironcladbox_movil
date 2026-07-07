@@ -76,7 +76,8 @@ class ApiService {
   bool _isConnectionError(DioException e) {
     return e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout;
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout;
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
@@ -148,6 +149,34 @@ class ApiService {
     }
   }
 
+  Future<Response> patch(String path, {dynamic data}) async {
+    try {
+      final response = await _dio.patch(path, data: data);
+      _isOffline = false;
+      return response;
+    } on DioException catch (e) {
+      if (_isConnectionError(e)) {
+        _isOffline = true;
+        _queue.enqueue(
+          'PATCH',
+          path,
+          body: data is Map<String, dynamic> ? data : null,
+        );
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          statusCode: 200,
+          data: {
+            'success': true,
+            'message': 'Guardado localmente. Se sincronizara al reconectar.',
+            'queued': true,
+          },
+          extra: {'queued': true},
+        );
+      }
+      rethrow;
+    }
+  }
+
   Future<Response> delete(String path) async {
     try {
       final response = await _dio.delete(path);
@@ -179,6 +208,8 @@ class ApiService {
         await _dio.post(path, data: body);
       } else if (method == 'PUT') {
         await _dio.put(path, data: body);
+      } else if (method == 'PATCH') {
+        await _dio.patch(path, data: body);
       } else if (method == 'DELETE') {
         await _dio.delete(path);
       }

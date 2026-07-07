@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/config/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
@@ -129,7 +130,7 @@ class ProfileView extends StatelessWidget {
               
               try {
                 // Assuming an endpoint exists for this in the backend
-                await ApiService().post('/api/auth/change-password', data: {
+                await ApiService().post(ApiConfig.changePassword, data: {
                   'oldPassword': oldPasswordController.text,
                   'newPassword': newPasswordController.text,
                 });

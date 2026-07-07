@@ -9,41 +9,73 @@
 /// - http://localhost:3000 (para dispositivo local)
 
 class ApiConfig {
-  // ⬇️ REEMPLAZA ESTA URL CON LA IP Y PUERTO DE TU API NODE.JS ⬇️
   static const String baseUrl = 'https://ironcladbox-1.onrender.com';
-  
-  // Endpoints de autenticación
+
+  // Auth
   static const String loginEndpoint = '/api/auth/login';
   static const String registerEndpoint = '/api/auth/register';
   static const String verifyTokenEndpoint = '/api/auth/verify';
   static const String profileEndpoint = '/api/auth/profile';
-  
-  // Endpoints de usuarios
-  static const String usersEndpoint = '/api/users';
-  
-  // Endpoints de WOD (Workout of the Day)
-  static const String wodsEndpoint = '/api/wod';
-  
-  // Endpoints de clases
-  static const String clasesEndpoint = '/api/clases';
-  
-  // Endpoints de inscripciones
-  static const String inscripcionesEndpoint = '/api/inscripciones';
-  
-  // Endpoints de membresías
   static const String membershipsEndpoint = '/api/auth/memberships';
 
-  // Endpoints de admin
-  static const String adminAthletesEndpoint = '/api/admin/athletes';
-  static const String adminMembershipsEndpoint = '/api/admin/memberships';
-  static const String adminTrainersEndpoint = '/api/admin/trainers';
-  static const String adminAssignMembershipEndpoint = '/api/admin/memberships/assign';
-  
-  // Endpoints de ejercicios
-  static const String ejerciciosEndpoint = '/api/ejercicios';
-  
-  // Endpoints de progreso
-  static const String progressEndpoint = '/api/progress';
+  // Admin - Memberships
+  static const String adminMemberships = '/api/admin/memberships';
+  static const String adminMembershipsAssign = '/api/admin/memberships/assign';
+  static const String adminMembershipsExpired = '/api/admin/memberships/expired';
+  static const String adminMembershipsDeactivate = '/api/admin/memberships/deactivate-expired';
+
+  // Admin - Athletes
+  static const String adminAthletes = '/api/admin/athletes';
+  static const String adminAthletesStatus = '/api/admin/athletes';
+  static const String adminAthletesMembership = '/api/admin/athletes';
+
+  // Admin - Trainers
+  static const String adminTrainers = '/api/admin/trainers';
+
+  // Members (athlete's own data)
+  static const String membersCheck = '/api/members/check-membership';
+  static const String membersMyMembership = '/api/members/my-membership';
+
+  // Trainers (public & own data)
+  static const String trainers = '/api/trainers';
+  static const String trainersMyClasses = '/api/trainers/my-classes';
+  static const String trainersMyWods = '/api/trainers/my-wods';
+  static const String trainersMyAthletes = '/api/trainers/my-athletes';
+
+  // Classes
+  static const String classes = '/api/classes';
+  static const String classesAvailable = '/api/classes/available';
+  static const String classesMy = '/api/classes/my-classes';
+  static const String classesEnroll = '/api/classes/enroll';
+  static const String classesUnenroll = '/api/classes/unenroll';
+  static const String classesDeleteEnrollment = '/api/classes/delete-enrollment';
+
+  // WOD
+  static const String wod = '/api/wod';
+  static const String wodMySchedules = '/api/wod/my-schedules';
+  static const String wodRacha = '/api/wod/racha';
+  static const String wodHistorial = '/api/wod/historial-asistencias';
+
+  // Exercises
+  static const String ejercicios = '/api/ejercicios';
+
+  // Progress
+  static const String progreso = '/api/progreso';
+  static const String progresoEjercicios = '/api/progreso/ejercicios';
+  static const String progresoEstadisticas = '/api/progreso/estadisticas';
+  static const String progresoMarca = '/api/progreso/marca';
+
+  // Contact
+  static const String contact = '/api/contact';
+
+  // Profile
+  static const String changePassword = '/api/auth/change-password';
+
+  // Admin - Classes
+  static const String adminClasses = '/api/admin/classes';
+
+  // Admin - Stats
+  static const String adminStats = '/api/admin/stats';
   
   // Headers por defecto
   static const Map<String, String> defaultHeaders = {
