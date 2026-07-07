@@ -33,6 +33,7 @@ class _DashboardViewState extends State<DashboardView> {
   late String _currentRole;
   bool _isOffline = false;
   StreamSubscription<void>? _reconnectSub;
+  StreamSubscription<void>? _sessionExpiredSub;
 
   @override
   void initState() {
@@ -47,11 +48,20 @@ class _DashboardViewState extends State<DashboardView> {
         _refreshAllViewModels();
       }
     });
+    _sessionExpiredSub = ApiService().onSessionExpired.listen((_) {
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginView()),
+          (route) => false,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
     _reconnectSub?.cancel();
+    _sessionExpiredSub?.cancel();
     super.dispose();
   }
 

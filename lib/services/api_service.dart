@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/config/api_config.dart';
@@ -14,6 +15,9 @@ class ApiService {
   final SyncQueueService _queue = SyncQueueService();
   bool _isOffline = false;
   bool _lastWriteQueued = false;
+
+  final _sessionExpiredController = StreamController<void>.broadcast();
+  Stream<void> get onSessionExpired => _sessionExpiredController.stream;
 
   bool get isOffline => _isOffline;
   bool get lastWriteQueued => _lastWriteQueued;
@@ -73,6 +77,9 @@ class ApiService {
   void _handleSessionExpired() {
     _secureStorage.delete(key: 'jwt_token');
     _secureStorage.delete(key: 'user_role');
+    _cache.clear();
+    _queue.clear();
+    _sessionExpiredController.add(null);
   }
 
   bool _isConnectionError(DioException e) {
@@ -127,6 +134,9 @@ class ApiService {
           extra: {'queued': true},
         );
       }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
       rethrow;
     }
   }
@@ -148,6 +158,9 @@ class ApiService {
           data: {'success': true, 'message': 'Guardado localmente. Se sincronizara al reconectar.', 'queued': true},
           extra: {'queued': true},
         );
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
       }
       rethrow;
     }
@@ -178,6 +191,9 @@ class ApiService {
           extra: {'queued': true},
         );
       }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
       rethrow;
     }
   }
@@ -199,6 +215,9 @@ class ApiService {
           data: {'success': true, 'message': 'Eliminado localmente. Se sincronizara al reconectar.', 'queued': true},
           extra: {'queued': true},
         );
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
       }
       rethrow;
     }
