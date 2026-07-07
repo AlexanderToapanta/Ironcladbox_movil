@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../core/config/api_config.dart';
 import 'login_view.dart';
-import 'register_view.dart';
 import 'dashboard_view.dart';
-import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
 class LandingView extends StatefulWidget {
@@ -33,6 +31,9 @@ class _LandingViewState extends State<LandingView> {
   static const _gray = Color(0xFFB0B0B5);
   static const _border = Color(0xFF3A3A3C);
 
+  final _aboutKey = GlobalKey();
+  final _membershipKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -45,41 +46,34 @@ class _LandingViewState extends State<LandingView> {
     final hasSession = await auth.verifyToken();
     if (hasSession && mounted) {
       final role = (await auth.getRole()) ?? 'ATLETA';
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => DashboardView(role: role)),
-      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => DashboardView(role: role)),
+        );
+      }
     }
   }
 
   Future<void> _loadData() async {
-    final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl));
+    final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl, connectTimeout: const Duration(seconds: 8), receiveTimeout: const Duration(seconds: 8)));
     try {
       final trainersRes = await dio.get('/api/trainers');
-      if (trainersRes.data is Map && trainersRes.data['data'] is List) {
-        _trainers = trainersRes.data['data'];
-      }
+      if (trainersRes.data is Map && trainersRes.data['data'] is List) _trainers = trainersRes.data['data'];
     } catch (_) {}
     try {
       final classesRes = await dio.get('/api/classes/available');
-      if (classesRes.data is Map && classesRes.data['data'] is List) {
-        _classes = classesRes.data['data'];
-      }
+      if (classesRes.data is Map && classesRes.data['data'] is List) _classes = classesRes.data['data'];
     } catch (_) {}
     try {
       final membersRes = await dio.get('/api/auth/memberships');
-      if (membersRes.data is Map && membersRes.data['data'] is List) {
-        _memberships = membersRes.data['data'];
-      }
+      if (membersRes.data is Map && membersRes.data['data'] is List) _memberships = membersRes.data['data'];
     } catch (_) {}
     try {
       final statsRes = await dio.get('/api/admin/stats');
       if (statsRes.data is Map && statsRes.data['data'] is Map) {
-        _stats = Map<String, int>.from(
-          (statsRes.data['data'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
-        );
+        _stats = Map<String, int>.from((statsRes.data['data'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt())));
       }
     } catch (_) {}
-
     if (mounted) setState(() => _loading = false);
   }
 
@@ -88,36 +82,22 @@ class _LandingViewState extends State<LandingView> {
     final email = _emailController.text.trim();
     final msg = _msgController.text.trim();
     if (name.isEmpty || email.isEmpty || msg.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa nombre, email y mensaje')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completa nombre, email y mensaje')));
       return;
     }
     setState(() => _sending = true);
     try {
       final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl));
-      await dio.post('/api/contact', data: {
-        'name': name,
-        'email': email,
-        'phone': _phoneController.text.trim(),
-        'message': msg,
-        'website': '',
-      });
+      await dio.post('/api/contact', data: {'name': name, 'email': email, 'phone': _phoneController.text.trim(), 'message': msg, 'website': ''});
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mensaje enviado exitosamente!'), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensaje enviado exitosamente!'), backgroundColor: Colors.green));
         _nameController.clear();
         _emailController.clear();
         _phoneController.clear();
         _msgController.clear();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
     if (mounted) setState(() => _sending = false);
   }
@@ -136,70 +116,76 @@ class _LandingViewState extends State<LandingView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.fitness_center, color: _red, size: 22),
-            const SizedBox(width: 8),
-            const Text('IRONCLADBOX', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+            const SizedBox(width: 6),
+            FittedBox(child: Text('IRONCLADBOX', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 1, color: Colors.white))),
           ],
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 8),
             child: ElevatedButton(
               onPressed: _goToLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _red,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              ),
-              child: const Text('Iniciar Sesion', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(backgroundColor: _red, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
+              child: const Text('Iniciar Sesion', style: TextStyle(fontSize: 11)),
             ),
           ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _red))
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildHero(),
-                  _buildAbout(),
-                  _buildClasses(),
-                  _buildTrainers(),
-                  _buildMemberships(),
-                  _buildContact(),
-                  _buildFooter(),
-                ],
-              ),
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildHero(w),
+                      _buildAbout(w),
+                      _buildClasses(w),
+                      _buildTrainers(w),
+                      _buildMemberships(w),
+                      _buildContact(w),
+                      _buildFooter(),
+                    ],
+                  ),
+                );
+              },
             ),
     );
   }
 
-  Widget _buildHero() {
+  Widget _buildHero(double w) {
+    final isSmall = w < 400;
     return Container(
-      width: double.infinity,
+      width: w,
       color: const Color(0xFF0D0D0F),
-      padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+      padding: EdgeInsets.symmetric(vertical: isSmall ? 40 : 60, horizontal: 20),
       child: Column(
         children: [
-          Icon(Icons.fitness_center, size: 60, color: _red),
-          const SizedBox(height: 16),
-          const Text('BIENVENIDO A', style: TextStyle(color: _gray, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 2)),
-          const SizedBox(height: 8),
-          const Text('IRONCLADBOX', style: TextStyle(color: _red, fontSize: 44, fontWeight: FontWeight.w900, letterSpacing: 4)),
-          const SizedBox(height: 8),
-          const Text('FORJANDO ATLETAS EN EL CORAZON DE QUITO', style: TextStyle(color: _gray, fontSize: 11, letterSpacing: 1)),
-          const SizedBox(height: 24),
+          Icon(Icons.fitness_center, size: isSmall ? 45 : 60, color: _red),
+          const SizedBox(height: 12),
+          FittedBox(child: Text('BIENVENIDO A', style: TextStyle(color: _gray, fontSize: isSmall ? 12 : 14, fontWeight: FontWeight.w600, letterSpacing: 2))),
+          const SizedBox(height: 6),
+          FittedBox(child: Text('IRONCLADBOX', style: TextStyle(color: _red, fontSize: isSmall ? 32 : 44, fontWeight: FontWeight.w900, letterSpacing: 4))),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text('FORJANDO ATLETAS EN EL CORAZON DE QUITO', style: TextStyle(color: _gray, fontSize: isSmall ? 10 : 12, letterSpacing: 1), textAlign: TextAlign.center),
+          ),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ElevatedButton(
                 onPressed: () => Scrollable.ensureVisible(_membershipKey.currentContext!, duration: const Duration(milliseconds: 500)),
-                style: ElevatedButton.styleFrom(backgroundColor: _red, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
-                child: const Text('COMENZAR AHORA'),
+                style: ElevatedButton.styleFrom(backgroundColor: _red, padding: EdgeInsets.symmetric(horizontal: isSmall ? 14 : 20, vertical: 10)),
+                child: Text('COMENZAR AHORA', style: TextStyle(fontSize: isSmall ? 10 : 12)),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: isSmall ? 8 : 12),
               OutlinedButton(
                 onPressed: () => Scrollable.ensureVisible(_aboutKey.currentContext!, duration: const Duration(milliseconds: 500)),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: _border), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
-                child: const Text('CONOCE MAS'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: _border), padding: EdgeInsets.symmetric(horizontal: isSmall ? 14 : 20, vertical: 10)),
+                child: Text('CONOCE MAS', style: TextStyle(fontSize: isSmall ? 10 : 12)),
               ),
             ],
           ),
@@ -208,48 +194,32 @@ class _LandingViewState extends State<LandingView> {
     );
   }
 
-  final _aboutKey = GlobalKey();
-  final _membershipKey = GlobalKey();
-
-  Widget _buildAbout() {
+  Widget _buildAbout(double w) {
+    final isSmall = w < 380;
     return Container(
       key: _aboutKey,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      width: w,
+      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
       child: Column(
         children: [
-          const Text('SOBRE NOSOTROS', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-          Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 12)),
-          const Text('EL MEJOR CROSSFIT DE QUITO', style: TextStyle(color: _red, fontSize: 13, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          const Text(
-            'IroncladBox es mas que un gimnasio, es una comunidad dedicada a transformar vidas a traves del fitness funcional. Ubicados en el corazon de Quito, ofrecemos un ambiente de entrenamiento de clase mundial con coaches certificados y programacion de primer nivel.',
-            style: TextStyle(color: _gray, fontSize: 12, height: 1.5),
-            textAlign: TextAlign.center,
-          ),
+          FittedBox(child: Text('SOBRE NOSOTROS', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2))),
+          Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 10)),
+          FittedBox(child: Text('EL MEJOR CROSSFIT DE QUITO', style: const TextStyle(color: _red, fontSize: 13, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 8),
+          const Text('IroncladBox es mas que un gimnasio, es una comunidad dedicada a transformar vidas a traves del fitness funcional.', style: TextStyle(color: _gray, fontSize: 11, height: 1.4), textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+            _featureCard(Icons.fitness_center, 'Equipo', 'Instalaciones'),
+            _featureCard(Icons.groups, 'Comunidad', 'Ambiente familiar'),
+            _featureCard(Icons.verified, 'Coaches', 'Certificados'),
+          ]),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: [
-              _featureCard(Icons.fitness_center, 'Equipo Premium', 'Instalaciones de primer nivel'),
-              _featureCard(Icons.groups, 'Comunidad', 'Ambiente motivador y familiar'),
-              _featureCard(Icons.verified, 'Coaches Certificados', 'Entrenadores experimentados'),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 20,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: [
-              _statCard(_stats['totalAthletes']?.toString() ?? '0', 'Atletas'),
-              _statCard(_stats['totalTrainers']?.toString() ?? '2', 'Coaches'),
-              _statCard(_stats['totalWODs']?.toString() ?? '0', 'Clases'),
-              _statCard(_stats['totalMemberships']?.toString() ?? '4', 'Membresias'),
-            ],
-          ),
+          Wrap(spacing: isSmall ? 10 : 16, runSpacing: 8, alignment: WrapAlignment.center, children: [
+            _statCard(_stats['totalAthletes']?.toString() ?? '0', 'Atletas'),
+            _statCard(_stats['totalTrainers']?.toString() ?? '2', 'Coaches'),
+            _statCard(_stats['totalWODs']?.toString() ?? '0', 'Clases'),
+            _statCard(_stats['totalMemberships']?.toString() ?? '4', 'Planes'),
+          ]),
         ],
       ),
     );
@@ -257,231 +227,181 @@ class _LandingViewState extends State<LandingView> {
 
   Widget _featureCard(IconData icon, String title, String desc) {
     return Container(
-      width: 150,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
-      child: Column(
-        children: [
-          Icon(icon, color: _red, size: 24),
-          const SizedBox(height: 6),
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-          const SizedBox(height: 2),
-          Text(desc, style: const TextStyle(color: _gray, fontSize: 10), textAlign: TextAlign.center),
-        ],
-      ),
+      width: 110,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, color: _red, size: 20),
+        const SizedBox(height: 4),
+        Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11)),
+        Text(desc, style: const TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center),
+      ]),
     );
   }
 
   Widget _statCard(String value, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
-      child: Column(
-        children: [
-          Text(value, style: const TextStyle(color: _red, fontSize: 22, fontWeight: FontWeight.w900)),
-          Text(label, style: const TextStyle(color: _gray, fontSize: 10)),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        FittedBox(child: Text(value, style: const TextStyle(color: _red, fontSize: 20, fontWeight: FontWeight.w900))),
+        Text(label, style: const TextStyle(color: _gray, fontSize: 9)),
+      ]),
     );
   }
 
-  Widget _buildClasses() {
+  Widget _buildClasses(double w) {
+    final isSmall = w < 380;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
-      child: Column(
-        children: [
-          const Text('NUESTRAS CLASES', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-          Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
-          const Text('Clases disenadas para todos los niveles', style: TextStyle(color: _gray, fontSize: 12)),
-          const SizedBox(height: 16),
-          _classes.isEmpty
-              ? const Text('Cargando clases...', style: TextStyle(color: _gray))
-              : Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: _classes.take(6).map<Widget>((c) => _classCard(c)).toList(),
-                ),
-        ],
-      ),
+      width: w,
+      padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 16),
+      child: Column(children: [
+        FittedBox(child: Text('NUESTRAS CLASES', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2))),
+        Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
+        Text('Clases para todos los niveles', style: TextStyle(color: _gray, fontSize: isSmall ? 11 : 12)),
+        const SizedBox(height: 14),
+        _classes.isEmpty
+            ? const Text('Cargando clases...', style: TextStyle(color: _gray))
+            : Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: _classes.take(6).map<Widget>((c) => _classCard(w, c)).toList()),
+      ]),
     );
   }
 
-  Widget _classCard(dynamic c) {
+  Widget _classCard(double screenW, dynamic c) {
     final name = c['nombre'] ?? 'Clase';
-    final hora = c['hora']?.toString().substring(0, c['hora'].toString().length.clamp(0, 5)) ?? '';
+    final hora = c['hora']?.toString();
+    final horaShort = hora != null && hora.length >= 5 ? hora.substring(0, 5) : '';
     final trainer = c['entrenador_nombre'] ?? '';
+    final cardW = screenW > 500 ? 220.0 : screenW * 0.42;
     return Container(
-      width: 200,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
-      child: Column(
-        children: [
-          Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13), textAlign: TextAlign.center),
-          if (hora.isNotEmpty) Text(hora, style: const TextStyle(color: _red, fontWeight: FontWeight.w700, fontSize: 12)),
-          if (trainer.isNotEmpty) Text(trainer, style: const TextStyle(color: _gray, fontSize: 10)),
-        ],
-      ),
+      width: cardW,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12), textAlign: TextAlign.center),
+        if (horaShort.isNotEmpty) Text(horaShort, style: const TextStyle(color: _red, fontWeight: FontWeight.w700, fontSize: 11)),
+        if (trainer.isNotEmpty) Text(trainer, style: const TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center),
+      ]),
     );
   }
 
-  Widget _buildTrainers() {
+  Widget _buildTrainers(double w) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
-      child: Column(
-        children: [
-          const Text('NUESTRO EQUIPO', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-          Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
-          const Text('Coaches certificados y apasionados', style: TextStyle(color: _gray, fontSize: 12)),
-          const SizedBox(height: 16),
-          _trainers.isEmpty
-              ? const Text('Cargando entrenadores...', style: TextStyle(color: _gray))
-              : Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: _trainers.take(4).map<Widget>((t) => _trainerCard(t)).toList(),
-                ),
-        ],
-      ),
+      width: w,
+      padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 16),
+      child: Column(children: [
+        FittedBox(child: Text('NUESTRO EQUIPO', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2))),
+        Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
+        const Text('Coaches certificados y apasionados', style: TextStyle(color: _gray, fontSize: 12)),
+        const SizedBox(height: 14),
+        _trainers.isEmpty
+            ? const Text('Cargando entrenadores...', style: TextStyle(color: _gray))
+            : Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: _trainers.take(4).map<Widget>((t) => _trainerCard(w, t)).toList()),
+      ]),
     );
   }
 
-  Widget _trainerCard(dynamic t) {
+  Widget _trainerCard(double screenW, dynamic t) {
     final fullName = '${t['nombre'] ?? ''} ${t['apellido'] ?? ''}'.trim();
     final especialidad = t['especialidad'] ?? '';
+    final cardW = screenW > 500 ? 160.0 : screenW * 0.4;
     return Container(
-      width: 170,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
-      child: Column(
-        children: [
-          const Icon(Icons.person, size: 40, color: _gray),
-          const SizedBox(height: 6),
-          Text(fullName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13), textAlign: TextAlign.center),
-          if (especialidad.isNotEmpty) Text(especialidad, style: const TextStyle(color: _red, fontSize: 10), textAlign: TextAlign.center),
-        ],
-      ),
+      width: cardW,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _border)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.person, size: 32, color: _gray),
+        const SizedBox(height: 4),
+        Text(fullName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12), textAlign: TextAlign.center),
+        if (especialidad.isNotEmpty) Text(especialidad, style: const TextStyle(color: _red, fontSize: 10), textAlign: TextAlign.center),
+      ]),
     );
   }
 
-  Widget _buildMemberships() {
+  Widget _buildMemberships(double w) {
     return Container(
       key: _membershipKey,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
-      child: Column(
-        children: [
-          const Text('MEMBRESIAS', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-          Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
-          const Text('Elige el plan que mejor se adapte a ti', style: TextStyle(color: _gray, fontSize: 12)),
-          const SizedBox(height: 16),
-          _memberships.isEmpty
-              ? const Text('Cargando membresias...', style: TextStyle(color: _gray))
-              : Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: _memberships.map<Widget>((m) => _membershipCard(m)).toList(),
-                ),
-        ],
-      ),
+      width: w,
+      padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 16),
+      child: Column(children: [
+        FittedBox(child: Text('MEMBRESIAS', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2))),
+        Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
+        const Text('Elige el plan que mejor se adapte a ti', style: TextStyle(color: _gray, fontSize: 12)),
+        const SizedBox(height: 14),
+        _memberships.isEmpty
+            ? const Text('Cargando membresias...', style: TextStyle(color: _gray))
+            : Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: _memberships.map<Widget>((m) => _membershipCard(w, m)).toList()),
+      ]),
     );
   }
 
-  Widget _membershipCard(dynamic m) {
+  Widget _membershipCard(double screenW, dynamic m) {
+    final cardW = screenW > 500 ? 170.0 : screenW * 0.4;
     return Container(
-      width: 180,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _red, width: 1.5)),
-      child: Column(
-        children: [
-          Text(m['nombre'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-          const SizedBox(height: 4),
-          Text('\$${m['precio'] ?? '0'}', style: const TextStyle(color: _red, fontSize: 24, fontWeight: FontWeight.w900)),
-          Text('${m['duracion_dias'] ?? 0} dias', style: const TextStyle(color: _gray, fontSize: 11)),
-          const SizedBox(height: 6),
-          if (m['beneficios'] != null)
-            ...(m['beneficios'].toString().split(',')).take(3).map((b) => Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(b.trim(), style: const TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center),
-                )),
-        ],
-      ),
+      width: cardW,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _red, width: 1.5)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        FittedBox(child: Text(m['nombre'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14))),
+        const SizedBox(height: 2),
+        FittedBox(child: Text('\$${m['precio'] ?? '0'}', style: const TextStyle(color: _red, fontSize: 22, fontWeight: FontWeight.w900))),
+        Text('${m['duracion_dias'] ?? 0} dias', style: const TextStyle(color: _gray, fontSize: 10)),
+        if (m['beneficios'] != null) const SizedBox(height: 4),
+        if (m['beneficios'] != null)
+          ...(m['beneficios'].toString().split(',')).take(3).map((b) => Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Text(b.trim(), style: const TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center),
+              )),
+      ]),
     );
   }
 
-  Widget _buildContact() {
+  Widget _buildContact(double w) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
-      child: Column(
-        children: [
-          const Text('CONTACTANOS', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-          Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
-          const Text('Estamos aqui para ayudarte a comenzar tu journey', style: TextStyle(color: _gray, fontSize: 12)),
-          const SizedBox(height: 16),
-          _infoRow(Icons.location_on, 'Ubicacion', 'Quito, Ecuador'),
-          _infoRow(Icons.phone, 'Telefono', '+593 99 666 6672'),
-          _infoRow(Icons.email, 'Email', 'info@ironcladbox.com'),
-          _infoRow(Icons.access_time, 'Horarios', 'Lun-Vie: 06:00-21:00 | Sab: 08:00-14:00'),
-          const SizedBox(height: 16),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Envianos un mensaje', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(hintText: 'Nombre completo', hintStyle: TextStyle(color: _gray)),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(hintText: 'Email', hintStyle: TextStyle(color: _gray)),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _phoneController,
-            decoration: const InputDecoration(hintText: 'Telefono', hintStyle: TextStyle(color: _gray)),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _msgController,
-            maxLines: 3,
-            decoration: const InputDecoration(hintText: 'Mensaje', hintStyle: TextStyle(color: _gray)),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _sending ? null : _sendContact,
-              child: _sending ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('ENVIAR MENSAJE'),
-            ),
-          ),
-        ],
-      ),
+      width: w,
+      padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
+      child: Column(children: [
+        FittedBox(child: Text('CONTACTANOS', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2))),
+        Container(width: 50, height: 3, color: _red, margin: const EdgeInsets.only(top: 8, bottom: 6)),
+        const Text('Estamos aqui para ayudarte', style: TextStyle(color: _gray, fontSize: 11)),
+        const SizedBox(height: 14),
+        _infoRow(Icons.location_on, 'Ubicacion', 'Quito, Ecuador'),
+        _infoRow(Icons.phone, 'Telefono', '+593 99 666 6672'),
+        _infoRow(Icons.email, 'Email', 'info@ironcladbox.com'),
+        _infoRow(Icons.access_time, 'Horarios', 'Lun-Vie: 06:00-21:00 | Sab: 08:00-14:00'),
+        const SizedBox(height: 14),
+        const Align(alignment: Alignment.centerLeft, child: Text('Envianos un mensaje', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+        const SizedBox(height: 8),
+        TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Nombre completo', hintStyle: TextStyle(color: _gray), isDense: true), style: const TextStyle(fontSize: 13)),
+        const SizedBox(height: 6),
+        TextField(controller: _emailController, decoration: const InputDecoration(hintText: 'Email', hintStyle: TextStyle(color: _gray), isDense: true), style: const TextStyle(fontSize: 13)),
+        const SizedBox(height: 6),
+        TextField(controller: _phoneController, decoration: const InputDecoration(hintText: 'Telefono', hintStyle: TextStyle(color: _gray), isDense: true), style: const TextStyle(fontSize: 13)),
+        const SizedBox(height: 6),
+        TextField(controller: _msgController, maxLines: 3, decoration: const InputDecoration(hintText: 'Mensaje', hintStyle: TextStyle(color: _gray), isDense: true), style: const TextStyle(fontSize: 13)),
+        const SizedBox(height: 10),
+        SizedBox(width: w, child: ElevatedButton(
+          onPressed: _sending ? null : _sendContact,
+          child: _sending ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('ENVIAR MENSAJE'),
+        )),
+      ]),
     );
   }
 
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: _red, size: 20),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11)),
-              Text(value, style: const TextStyle(color: _gray, fontSize: 11)),
-            ],
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        Icon(icon, color: _red, size: 18),
+        const SizedBox(width: 8),
+        Flexible(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10)),
+            Text(value, style: const TextStyle(color: _gray, fontSize: 10), overflow: TextOverflow.ellipsis, maxLines: 2),
+          ],
+        )),
+      ]),
     );
   }
 
@@ -489,36 +409,34 @@ class _LandingViewState extends State<LandingView> {
     return Container(
       width: double.infinity,
       color: const Color(0xFF0A0A0C),
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-      child: Column(
-        children: [
-          const Text('IRONCLADBOX', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 2)),
-          const SizedBox(height: 4),
-          const Text('Forjando atletas desde 2024', style: TextStyle(color: _gray, fontSize: 11)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 16,
-            alignment: WrapAlignment.center,
-            children: [
-              TextButton(onPressed: () {}, child: const Text('Facebook', style: TextStyle(color: _red, fontSize: 11))),
-              TextButton(onPressed: () {}, child: const Text('Instagram', style: TextStyle(color: _red, fontSize: 11))),
-              TextButton(onPressed: () {}, child: const Text('WhatsApp', style: TextStyle(color: _red, fontSize: 11))),
-              TextButton(onPressed: () {}, child: const Text('YouTube', style: TextStyle(color: _red, fontSize: 11))),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text('Lun-Vie: 06:00-21:00 | Sab: 08:00-14:00 | Dom: Cerrado', style: TextStyle(color: _gray, fontSize: 10)),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: _goToLogin,
-            icon: const Icon(Icons.login, size: 16),
-            label: const Text('INICIAR SESION'),
-            style: ElevatedButton.styleFrom(backgroundColor: _red),
-          ),
-          const SizedBox(height: 10),
-          const Text('(c) 2026 IroncladBox CrossFit. Todos los derechos reservados.', style: TextStyle(color: _gray, fontSize: 9)),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      child: Column(children: [
+        const Text('IRONCLADBOX', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 2)),
+        const SizedBox(height: 2),
+        const Text('Forjando atletas desde 2024', style: TextStyle(color: _gray, fontSize: 10)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 12, alignment: WrapAlignment.center, children: [
+          TextButton(onPressed: () {}, child: const Text('FB', style: TextStyle(color: _red, fontSize: 11))),
+          TextButton(onPressed: () {}, child: const Text('IG', style: TextStyle(color: _red, fontSize: 11))),
+          TextButton(onPressed: () {}, child: const Text('WA', style: TextStyle(color: _red, fontSize: 11))),
+          TextButton(onPressed: () {}, child: const Text('YT', style: TextStyle(color: _red, fontSize: 11))),
+        ]),
+        const SizedBox(height: 6),
+        const Text('Lun-Vie: 06:00-21:00 | Sab: 08:00-14:00 | Dom: Cerrado', style: TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(onPressed: _goToLogin, icon: const Icon(Icons.login, size: 14), label: const Text('INICIAR SESION'), style: ElevatedButton.styleFrom(backgroundColor: _red, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), textStyle: const TextStyle(fontSize: 11))),
+        const SizedBox(height: 8),
+        const Text('(c) 2026 IroncladBox CrossFit', style: TextStyle(color: _gray, fontSize: 9)),
+      ]),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _msgController.dispose();
+    super.dispose();
   }
 }
