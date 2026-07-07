@@ -517,7 +517,7 @@ class _AthletesViewState extends State<AthletesView> {
                   final today = DateTime.now();
                   final payload = {
                     'id_membresia': selectedId,
-                    'fecha_inicio_membresia': today.toIso8601String().split('T').first,
+                    'fecha_inicio': today.toIso8601String().split('T').first,
                     'activo': true,
                   };
                   await context.read<AthletesViewModel>().updateMembership(athlete.id!, payload);
