@@ -11,6 +11,17 @@ class CacheService {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    _checkAndClearIfVersionChanged();
+  }
+
+  Future<void> _checkAndClearIfVersionChanged() async {
+    if (_prefs == null) return;
+    const currentVersion = 'v2-local';
+    final savedVersion = _prefs!.getString('cache_version');
+    if (savedVersion != currentVersion) {
+      await clear();
+      await _prefs!.setString('cache_version', currentVersion);
+    }
   }
 
   Future<void> save(String key, dynamic data) async {
