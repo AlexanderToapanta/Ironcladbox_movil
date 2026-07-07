@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
+import '../services/socket_service.dart';
 
-/// ViewModel para la pantalla de Login
-/// Maneja la lógica de autenticación
 class LoginViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final SocketService _socketService = SocketService();
   
   bool _isLoading = false;
   String _errorMessage = '';
@@ -14,13 +14,11 @@ class LoginViewModel extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get currentRole => _currentRole;
   
-  /// Inicializar el rol si ya hay una sesión activa
   void setRole(String role) {
     _currentRole = role;
     notifyListeners();
   }
 
-  /// Realizar login
   Future<bool> login({
     required String email,
     required String password,
@@ -39,6 +37,7 @@ class LoginViewModel extends ChangeNotifier {
         _currentRole = session.role;
         _isLoading = false;
         notifyListeners();
+        _socketService.connect();
         return true;
       }
     } catch (e) {
@@ -51,11 +50,11 @@ class LoginViewModel extends ChangeNotifier {
     return false;
   }
 
-  /// Cerrar sesión y limpiar el estado local
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
 
+    _socketService.disconnect();
     await _authService.logout();
 
     _currentRole = 'athlete';
@@ -64,7 +63,6 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
   
-  /// Limpiar mensajes de error
   void clearError() {
     _errorMessage = '';
     notifyListeners();

@@ -246,6 +246,9 @@ class _AthletesViewState extends State<AthletesView> {
     final emailController = TextEditingController();
     final phoneController = TextEditingController();
     final addressController = TextEditingController();
+    final weightController = TextEditingController();
+    final heightController = TextEditingController();
+    final emergencyController = TextEditingController();
     DateTime? birthDate;
 
     showDialog(
@@ -313,6 +316,29 @@ class _AthletesViewState extends State<AthletesView> {
                   icon: Icons.location_on,
                   validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                 ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: weightController,
+                  label: 'Peso (kg)',
+                  icon: Icons.monitor_weight,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => null,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: heightController,
+                  label: 'Altura (m)',
+                  icon: Icons.height,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => null,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: emergencyController,
+                  label: 'Contacto de Emergencia',
+                  icon: Icons.contact_emergency,
+                  validator: (v) => null,
+                ),
               ],
             ),
           ),
@@ -320,26 +346,27 @@ class _AthletesViewState extends State<AthletesView> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                if (birthDate == null) return;
-                
-                // Password is Aa + DOB in ddmmyyyy format to pass backend uppercase and lowercase validation
-                final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
-                
-                await AuthService().register(
-                  email: emailController.text.trim(),
-                  password: password,
-                  name: nameController.text.trim(),
-                  lastName: lastNameController.text.trim(),
-                  phone: phoneController.text.trim(),
-                  address: addressController.text.trim(),
-                  birthDate: birthDate,
-                  role: 'ATLETA',
-                );
+                final bd = birthDate ?? DateTime.now().subtract(const Duration(days: 365 * 20));
+                final vm = context.read<AthletesViewModel>();
+                await vm.create({
+                  'nombre': nameController.text.trim(),
+                  'apellido': lastNameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(bd),
+                  'telefono': phoneController.text.trim(),
+                  'direccion': addressController.text.trim(),
+                  'contacto_emergencia': emergencyController.text.trim(),
+                  'peso': double.tryParse(weightController.text) ?? 0,
+                  'altura': double.tryParse(heightController.text) ?? 0,
+                });
                 
                 if (mounted) {
                   Navigator.pop(context);
-                  context.read<AthletesViewModel>().loadAll();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta creado'),
+                    backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
                 }
+                vm.clearError();
               },
               child: const Text('Crear'),
             ),
@@ -352,6 +379,7 @@ class _AthletesViewState extends State<AthletesView> {
   void _showEditAthleteDialog(AthleteDto athlete) {
     final nameController = TextEditingController(text: athlete.nombre);
     final lastNameController = TextEditingController(text: athlete.apellido);
+    final emailController = TextEditingController(text: athlete.email);
     final phoneController = TextEditingController(text: athlete.telefono);
     final addressController = TextEditingController(text: athlete.direccion);
 
@@ -378,6 +406,14 @@ class _AthletesViewState extends State<AthletesView> {
               ),
               const SizedBox(height: 12),
               IroncladFormField(
+                controller: emailController,
+                label: 'Email',
+                icon: Icons.email,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              IroncladFormField(
                 controller: phoneController,
                 label: 'Teléfono',
                 icon: Icons.phone,
@@ -400,10 +436,19 @@ class _AthletesViewState extends State<AthletesView> {
               await context.read<AthletesViewModel>().update(athlete.id!, {
                 'nombre': nameController.text.trim(),
                 'apellido': lastNameController.text.trim(),
+                'email': emailController.text.trim(),
                 'telefono': phoneController.text.trim(),
                 'direccion': addressController.text.trim(),
+                'contacto_emergencia': '',
               });
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<AthletesViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta actualizado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Guardar'),
           ),
@@ -482,11 +527,18 @@ class _AthletesViewState extends State<AthletesView> {
                   final today = DateTime.now();
                   final payload = {
                     'id_membresia': selectedId,
-                    'fecha_inicio_membresia': today.toIso8601String().split('T').first,
+                    'fecha_inicio': today.toIso8601String().split('T').first,
                     'activo': true,
                   };
                   await context.read<AthletesViewModel>().updateMembership(athlete.id!, payload);
-                  if (mounted) Navigator.pop(context);
+                  final vm = context.read<AthletesViewModel>();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Membresia asignada'),
+                      backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                    Navigator.pop(context);
+                  }
+                  vm.clearError();
                 }
               },
               child: const Text('ACTUALIZAR', style: TextStyle(color: Colors.white)),
@@ -509,7 +561,14 @@ class _AthletesViewState extends State<AthletesView> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               await context.read<AthletesViewModel>().delete(athlete.id!);
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<AthletesViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta eliminado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Eliminar'),
           ),

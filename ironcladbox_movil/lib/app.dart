@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'views/splash_view.dart';
+import 'views/landing_view.dart';
 import 'viewmodels/backend_viewmodels.dart';
 import 'viewmodels/login_viewmodel.dart';
 import 'viewmodels/splash_viewmodel.dart';
@@ -94,7 +95,7 @@ class IroncladBoxApp extends StatelessWidget {
             type: BottomNavigationBarType.fixed,
           ),
         ),
-        home: const SplashView(),
+        home: const LandingView(),
       ),
     );
   }

@@ -8,6 +8,7 @@ import 'widgets/atoms/ironclad_status_banner.dart';
 import 'widgets/molecules/ironclad_auth_card.dart';
 import '../viewmodels/login_viewmodel.dart';
 import 'dashboard_view.dart';
+import 'landing_view.dart';
 import 'register_view.dart';
 
 class LoginView extends StatefulWidget {
@@ -115,6 +116,15 @@ class _LoginViewState extends State<LoginView> {
                               );
                             },
                             child: const Text('Crear cuenta nueva', style: TextStyle(color: Color(0xFFFF3B30))),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const LandingView()),
+                                (route) => false,
+                              );
+                            },
+                            child: const Text('Volver al Inicio', style: TextStyle(color: Color(0xFFB0B0B5), fontSize: 12)),
                           ),
                         ],
                       ),

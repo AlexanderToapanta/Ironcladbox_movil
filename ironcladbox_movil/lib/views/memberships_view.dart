@@ -195,6 +195,13 @@ class _MembershipsViewState extends State<MembershipsView> {
               } else {
                 await context.read<MembershipsViewModel>().create(payload);
               }
+              final vm = context.read<MembershipsViewModel>();
+              if (vm.errorMessage.isNotEmpty && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vm.errorMessage), backgroundColor: Colors.red));
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'Membresia actualizada' : 'Membresia creada'), backgroundColor: Colors.green));
+              }
+              vm.clearError();
               if (mounted) Navigator.pop(context);
             },
             child: const Text('GUARDAR', style: TextStyle(color: Colors.white)),
@@ -216,6 +223,13 @@ class _MembershipsViewState extends State<MembershipsView> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               await context.read<MembershipsViewModel>().delete(membership.id!);
+              final vm = context.read<MembershipsViewModel>();
+              if (vm.errorMessage.isNotEmpty && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vm.errorMessage), backgroundColor: Colors.red));
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membresia eliminada'), backgroundColor: Colors.green));
+              }
+              vm.clearError();
               if (mounted) Navigator.pop(context);
             },
             child: const Text('SÍ, ELIMINAR'),

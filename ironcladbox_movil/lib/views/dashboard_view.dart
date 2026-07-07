@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
+import '../services/socket_service.dart';
 import '../viewmodels/login_viewmodel.dart';
+import '../viewmodels/backend_viewmodels.dart';
 import 'athletes_view.dart';
 import 'dashboard_home_view.dart';
 import 'exercises_view.dart';
 import 'login_view.dart';
+import 'memberships_view.dart';
 import 'my_membership_view.dart';
 import 'profile_view.dart';
 import 'progress_view.dart';
@@ -26,34 +31,65 @@ class DashboardView extends StatefulWidget {
 class _DashboardViewState extends State<DashboardView> {
   int _selectedIndex = 0;
   late String _currentRole;
+  bool _isOffline = false;
+  StreamSubscription<void>? _reconnectSub;
+  StreamSubscription<void>? _sessionExpiredSub;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _currentRole = widget.role;
     _checkUserStatus();
-  }
-
-  Future<void> _checkUserStatus() async {
-    final profile = await AuthService().getProfile();
-    if (profile == null) {
+    _isOffline = ApiService().isOffline;
+    _reconnectSub = SocketService().onReconnected.listen((_) {
       if (mounted) {
-        context.read<LoginViewModel>().logout();
+        setState(() => _isOffline = false);
+        ApiService().drainQueue();
+        _refreshAllViewModels();
+      }
+    });
+    _sessionExpiredSub = ApiService().onSessionExpired.listen((_) {
+      if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginView()),
           (route) => false,
         );
       }
-      return;
-    }
+    });
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _refreshAllViewModels();
+    });
+  }
 
-    final newRole = profile['rol_nombre'] ?? profile['rol'] ?? _currentRole;
-    if (mounted && newRole.toLowerCase() != _currentRole.toLowerCase()) {
-      setState(() {
-        _currentRole = newRole;
-      });
-      // Sincronizar con el LoginViewModel para que las sub-vistas vean el cambio
-      context.read<LoginViewModel>().setRole(newRole);
+  @override
+  void dispose() {
+    _reconnectSub?.cancel();
+    _sessionExpiredSub?.cancel();
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _refreshAllViewModels() {
+    try {
+      context.read<MembershipsViewModel>().loadAll();
+      context.read<AthletesViewModel>().loadAll();
+      context.read<TrainersViewModel>().loadAll();
+      context.read<ClassesViewModel>().loadAll();
+      context.read<ExercisesViewModel>().loadAll();
+      context.read<WodsViewModel>().loadByMonth(DateTime.now().year, DateTime.now().month);
+      context.read<ProgressViewModel>().loadAll();
+    } catch (_) {}
+  }
+
+  Future<void> _checkUserStatus() async {
+    final profile = await AuthService().getProfile();
+    if (profile != null) {
+      final newRole = profile['rol_nombre'] ?? profile['rol'] ?? _currentRole;
+      if (mounted && newRole.toLowerCase() != _currentRole.toLowerCase()) {
+        setState(() { _currentRole = newRole; });
+        context.read<LoginViewModel>().setRole(newRole);
+      }
     }
   }
 
@@ -63,9 +99,11 @@ class _DashboardViewState extends State<DashboardView> {
     if (role == 'administrador' || role == 'admin') {
       return const [
         _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
-        _DashboardTab('Atletas', Icons.groups, 'Gestión de atletas'),
+        _DashboardTab('Atletas', Icons.groups, 'Gestion de atletas'),
         _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
-        _DashboardTab('Entrenadores', Icons.badge, 'Gestión de entrenadores'),
+        _DashboardTab('Entrenadores', Icons.badge, 'Gestion de entrenadores'),
+        _DashboardTab('Membresias', Icons.card_membership, 'Gestion de membresias'),
+        _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Ejercicios'),
         _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
     }
@@ -111,7 +149,59 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         ],
       ),
-      body: IndexedStack(index: _selectedIndex, children: pages),
+      body: Column(
+        children: [
+          if (_isOffline || ApiService().isOffline)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: ApiService().pendingCount > 0 ? Colors.red.shade700 : Colors.orange.shade800,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    ApiService().pendingCount > 0 ? Icons.sync_problem : Icons.wifi_off,
+                    color: Colors.white, size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      ApiService().pendingCount > 0
+                          ? 'SIN CONEXION - ${ApiService().pendingCount} cambios pendientes - Toca para reintentar'
+                          : 'Sin conexion - Mostrando datos en cache - Toca para reconectar',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      ApiService().forceOnline();
+                      setState(() => _isOffline = false);
+                      ApiService().drainQueue();
+                      _refreshAllViewModels();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh, color: Colors.white, size: 18),
+                          SizedBox(width: 4),
+                          Text('RECONECTAR', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(child: IndexedStack(index: _selectedIndex, children: pages)),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
@@ -150,6 +240,8 @@ List<Widget> _pagesForRole(String role) {
       AthletesView(),
       WodsView(),
       TrainersView(),
+      MembershipsView(),
+      ExercisesView(),
       ProfileView(),
     ];
   }

@@ -1,23 +1,38 @@
+import 'dart:convert';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/config/api_config.dart';
+import 'cache_service.dart';
+import 'sync_queue_service.dart';
 
-/// Servicio base para todas las peticiones HTTP
-/// Centraliza la configuración de Dio y manejo de tokens
 class ApiService {
   static final ApiService _instance = ApiService._internal();
-  
+
   late Dio _dio;
   final _secureStorage = const FlutterSecureStorage();
-  
+  final CacheService _cache = CacheService();
+  final SyncQueueService _queue = SyncQueueService();
+  bool _isOffline = false;
+  bool _lastWriteQueued = false;
+
+  final _sessionExpiredController = StreamController<void>.broadcast();
+  Stream<void> get onSessionExpired => _sessionExpiredController.stream;
+
+  bool get isOffline => _isOffline;
+  bool get lastWriteQueued => _lastWriteQueued;
+  int get pendingCount => _queue.pendingCount;
+
   factory ApiService() {
     return _instance;
   }
-  
+
   ApiService._internal() {
     _initializeDio();
+    _cache.init();
+    _queue.init();
   }
-  
+
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
@@ -28,8 +43,7 @@ class ApiService {
         headers: ApiConfig.defaultHeaders,
       ),
     );
-    
-    // Agregar interceptor para tokens JWT y manejo de sesiones
+
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -40,14 +54,17 @@ class ApiService {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          // Si el backend indica que el usuario está desactivado o la sesión expiró en el body
           if (response.data is Map && response.data['sessionExpired'] == true) {
             _handleSessionExpired();
           }
+          if (response.requestOptions.method.toUpperCase() == 'GET') {
+            final key = response.requestOptions.path.replaceAll('/', '_');
+            _cache.save(key, response.data);
+          }
+          _isOffline = false;
           return handler.next(response);
         },
         onError: (error, handler) {
-          // Manejar errores 401 (token expirado) o 403 (cuenta desactivada/prohibido)
           if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
             _handleSessionExpired();
           }
@@ -60,53 +77,170 @@ class ApiService {
   void _handleSessionExpired() {
     _secureStorage.delete(key: 'jwt_token');
     _secureStorage.delete(key: 'user_role');
-    // Aquí podrías usar una GlobalKey para navegar al login, 
-    // pero el interceptor ya limpia los datos para que el próximo reinicio pida login.
+    _cache.clear();
+    _queue.clear();
+    _sessionExpiredController.add(null);
   }
-  
-  /// GET request
+
+  bool _isConnectionError(DioException e) {
+    return e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout;
+  }
+
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
-    return await _dio.get(path, queryParameters: queryParameters);
-  }
-  
-  /// POST request
-  Future<Response> post(String path, {dynamic data}) async {
-    return await _dio.post(path, data: data);
-  }
-  
-  /// PUT request
-  Future<Response> put(String path, {dynamic data}) async {
-    return await _dio.put(path, data: data);
-  }
-  
-  /// DELETE request
-  Future<Response> delete(String path) async {
-    return await _dio.delete(path);
-  }
-  
-  /// Manejo centralizado de excepciones HTTP
-  String _handleDioException(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-        return 'Tiempo de conexión agotado';
-      case DioExceptionType.sendTimeout:
-        return 'Tiempo de envío agotado';
-      case DioExceptionType.receiveTimeout:
-        return 'Tiempo de respuesta agotado';
-      case DioExceptionType.badResponse:
-        return 'Error del servidor: ${error.response?.statusCode}';
-      case DioExceptionType.cancel:
-        return 'Solicitud cancelada';
-      case DioExceptionType.connectionError:
-        return 'Error de conexión. Verifica tu conexión a internet.';
-      case DioExceptionType.unknown:
-        return 'Error desconocido: ${error.message}';
-      default:
-        return 'Error inesperado';
+    try {
+      final response = await _dio.get(path, queryParameters: queryParameters);
+      _isOffline = false;
+      return response;
+    } on DioException catch (e) {
+      if (_isConnectionError(e)) {
+        final key = path.replaceAll('/', '_');
+        final cached = _cache.get(key);
+        if (cached != null) {
+          _isOffline = true;
+          return Response(
+            requestOptions: RequestOptions(path: path),
+            statusCode: 200,
+            data: cached,
+            extra: {'fromCache': true, 'cacheAgeMin': _cache.getAgeMinutes(key)},
+          );
+        }
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
+      _isOffline = _isConnectionError(e);
+      rethrow;
     }
   }
-  
-  /// Establecer token JWT
+
+  Future<Response> post(String path, {dynamic data}) async {
+    try {
+      final response = await _dio.post(path, data: data);
+      _isOffline = false;
+      _drainQueue();
+      return response;
+    } on DioException catch (e) {
+      if (_isConnectionError(e)) {
+        _isOffline = true;
+        _lastWriteQueued = true;
+        _queue.enqueue('POST', path, body: data is Map<String, dynamic> ? data : null);
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          statusCode: 201,
+          data: {'success': true, 'message': 'Guardado localmente. Se sincronizara al reconectar.', 'queued': true},
+          extra: {'queued': true},
+        );
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
+      rethrow;
+    }
+  }
+
+  Future<Response> put(String path, {dynamic data}) async {
+    try {
+      final response = await _dio.put(path, data: data);
+      _isOffline = false;
+      _drainQueue();
+      return response;
+    } on DioException catch (e) {
+      if (_isConnectionError(e)) {
+        _isOffline = true;
+        _lastWriteQueued = true;
+        _queue.enqueue('PUT', path, body: data is Map<String, dynamic> ? data : null);
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          statusCode: 200,
+          data: {'success': true, 'message': 'Guardado localmente. Se sincronizara al reconectar.', 'queued': true},
+          extra: {'queued': true},
+        );
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
+      rethrow;
+    }
+  }
+
+  Future<Response> patch(String path, {dynamic data}) async {
+    try {
+      final response = await _dio.patch(path, data: data);
+      _isOffline = false;
+      return response;
+    } on DioException catch (e) {
+      if (_isConnectionError(e)) {
+        _isOffline = true;
+        _lastWriteQueued = true;
+        _queue.enqueue(
+          'PATCH',
+          path,
+          body: data is Map<String, dynamic> ? data : null,
+        );
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          statusCode: 200,
+          data: {
+            'success': true,
+            'message': 'Guardado localmente. Se sincronizara al reconectar.',
+            'queued': true,
+          },
+          extra: {'queued': true},
+        );
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
+      rethrow;
+    }
+  }
+
+  Future<Response> delete(String path) async {
+    try {
+      final response = await _dio.delete(path);
+      _isOffline = false;
+      _drainQueue();
+      return response;
+    } on DioException catch (e) {
+      if (_isConnectionError(e)) {
+        _isOffline = true;
+        _lastWriteQueued = true;
+        _queue.enqueue('DELETE', path);
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          statusCode: 200,
+          data: {'success': true, 'message': 'Eliminado localmente. Se sincronizara al reconectar.', 'queued': true},
+          extra: {'queued': true},
+        );
+      }
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _handleSessionExpired();
+      }
+      rethrow;
+    }
+  }
+
+  void _drainQueue() {
+    drainQueue();
+  }
+
+  Future<void> drainQueue() async {
+    await _queue.processQueue((method, path, body) async {
+      if (method == 'POST') {
+        await _dio.post(path, data: body);
+      } else if (method == 'PUT') {
+        await _dio.put(path, data: body);
+      } else if (method == 'PATCH') {
+        await _dio.patch(path, data: body);
+      } else if (method == 'DELETE') {
+        await _dio.delete(path);
+      }
+    });
+  }
+
   Future<void> setToken(String token) async {
     await _secureStorage.write(key: 'jwt_token', value: token);
   }
@@ -114,8 +248,7 @@ class ApiService {
   Future<void> setRole(String role) async {
     await _secureStorage.write(key: 'user_role', value: role);
   }
-  
-  /// Obtener token JWT
+
   Future<String?> getToken() async {
     return await _secureStorage.read(key: 'jwt_token');
   }
@@ -123,8 +256,7 @@ class ApiService {
   Future<String?> getRole() async {
     return await _secureStorage.read(key: 'user_role');
   }
-  
-  /// Limpiar token
+
   Future<void> clearToken() async {
     await _secureStorage.delete(key: 'jwt_token');
   }
@@ -132,6 +264,15 @@ class ApiService {
   Future<void> clearRole() async {
     await _secureStorage.delete(key: 'user_role');
   }
-  
+
   Dio getDio() => _dio;
+
+  void forceOnline() {
+    _isOffline = false;
+    _lastWriteQueued = false;
+  }
+
+  void clearLastWriteFlag() {
+    _lastWriteQueued = false;
+  }
 }

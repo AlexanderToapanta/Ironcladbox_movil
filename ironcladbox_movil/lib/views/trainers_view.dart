@@ -122,6 +122,7 @@ class _TrainersViewState extends State<TrainersView> {
     final specialtyController = TextEditingController();
     final expController = TextEditingController();
     final certController = TextEditingController();
+    final bioController = TextEditingController();
     DateTime? birthDate;
 
     showDialog(
@@ -208,6 +209,13 @@ class _TrainersViewState extends State<TrainersView> {
                   icon: Icons.card_membership,
                   validator: (v) => null,
                 ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: bioController,
+                  label: 'Biografía',
+                  icon: Icons.description,
+                  validator: (v) => null,
+                ),
               ],
             ),
           ),
@@ -215,26 +223,27 @@ class _TrainersViewState extends State<TrainersView> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                if (birthDate == null) return;
-                
-                // Password is Aa + DOB in ddmmyyyy format to pass backend uppercase and lowercase validation
-                final password = 'Aa${DateFormat('ddMMyyyy').format(birthDate!)}';
-                
-                await AuthService().register(
-                  email: emailController.text.trim(),
-                  password: password,
-                  name: nameController.text.trim(),
-                  lastName: lastNameController.text.trim(),
-                  phone: phoneController.text.trim(),
-                  address: addressController.text.trim(),
-                  birthDate: birthDate,
-                  role: 'ENTRENADOR',
-                );
+                final bd = birthDate ?? DateTime.now().subtract(const Duration(days: 365 * 25));
+                final vm = context.read<TrainersViewModel>();
+                await vm.create({
+                  'nombre': nameController.text.trim(),
+                  'apellido': lastNameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(bd),
+                  'especialidad': specialtyController.text.trim(),
+                  'anios_experiencia': int.tryParse(expController.text.trim()) ?? 0,
+                  'certificaciones': certController.text.trim(),
+                  'biografia': bioController.text.trim(),
+                  'direccion': addressController.text.trim(),
+                });
                 
                 if (mounted) {
                   Navigator.pop(context);
-                  context.read<TrainersViewModel>().loadAll();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Entrenador creado'),
+                    backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
                 }
+                vm.clearError();
               },
               child: const Text('Crear'),
             ),
@@ -252,6 +261,7 @@ class _TrainersViewState extends State<TrainersView> {
     final specialtyController = TextEditingController(text: trainer.especialidad);
     final expController = TextEditingController(text: trainer.aniosExperiencia?.toString());
     final certController = TextEditingController(text: trainer.certificaciones);
+    final bioController = TextEditingController(text: trainer.biografia);
 
     showDialog(
       context: context,
@@ -315,6 +325,13 @@ class _TrainersViewState extends State<TrainersView> {
                 icon: Icons.card_membership,
                 validator: (v) => null,
               ),
+              const SizedBox(height: 12),
+              IroncladFormField(
+                controller: bioController,
+                label: 'Biografía',
+                icon: Icons.description,
+                validator: (v) => null,
+              ),
             ],
           ),
         ),
@@ -330,8 +347,16 @@ class _TrainersViewState extends State<TrainersView> {
                 'especialidad': specialtyController.text.trim(),
                 'anios_experiencia': int.tryParse(expController.text),
                 'certificaciones': certController.text.trim(),
+                'biografia': bioController.text.trim(),
               });
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<TrainersViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Entrenador actualizado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Guardar'),
           ),
@@ -352,7 +377,14 @@ class _TrainersViewState extends State<TrainersView> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               await context.read<TrainersViewModel>().delete(trainer.id!);
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<TrainersViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Entrenador eliminado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Eliminar'),
           ),
