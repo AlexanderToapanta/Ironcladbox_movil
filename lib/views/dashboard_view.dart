@@ -69,24 +69,12 @@ class _DashboardViewState extends State<DashboardView> {
 
   Future<void> _checkUserStatus() async {
     final profile = await AuthService().getProfile();
-    if (profile == null) {
-      if (mounted) {
-        context.read<LoginViewModel>().logout();
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginView()),
-          (route) => false,
-        );
+    if (profile != null) {
+      final newRole = profile['rol_nombre'] ?? profile['rol'] ?? _currentRole;
+      if (mounted && newRole.toLowerCase() != _currentRole.toLowerCase()) {
+        setState(() { _currentRole = newRole; });
+        context.read<LoginViewModel>().setRole(newRole);
       }
-      return;
-    }
-
-    final newRole = profile['rol_nombre'] ?? profile['rol'] ?? _currentRole;
-    if (mounted && newRole.toLowerCase() != _currentRole.toLowerCase()) {
-      setState(() {
-        _currentRole = newRole;
-      });
-      // Sincronizar con el LoginViewModel para que las sub-vistas vean el cambio
-      context.read<LoginViewModel>().setRole(newRole);
     }
   }
 
