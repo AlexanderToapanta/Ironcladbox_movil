@@ -523,6 +523,7 @@ class WodsViewModel extends BaseCollectionViewModel<WodDto> {
     _setError('');
     try {
       await _service.create(payload);
+      await loadByMonth(DateTime.now().year, DateTime.now().month);
     } catch (e) {
       _setError(extractServiceError(e));
     }
@@ -534,6 +535,7 @@ class WodsViewModel extends BaseCollectionViewModel<WodDto> {
     _setError('');
     try {
       await _service.update(id, payload);
+      await loadByMonth(DateTime.now().year, DateTime.now().month);
     } catch (e) {
       _setError(extractServiceError(e));
     }
