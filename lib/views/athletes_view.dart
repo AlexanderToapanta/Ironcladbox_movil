@@ -362,8 +362,11 @@ class _AthletesViewState extends State<AthletesView> {
                 
                 if (mounted) {
                   Navigator.pop(context);
-                  context.read<AthletesViewModel>().loadAll();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta creado'),
+                    backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
                 }
+                vm.clearError();
               },
               child: const Text('Crear'),
             ),
@@ -438,7 +441,14 @@ class _AthletesViewState extends State<AthletesView> {
                 'direccion': addressController.text.trim(),
                 'contacto_emergencia': '',
               });
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<AthletesViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta actualizado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Guardar'),
           ),
@@ -521,7 +531,14 @@ class _AthletesViewState extends State<AthletesView> {
                     'activo': true,
                   };
                   await context.read<AthletesViewModel>().updateMembership(athlete.id!, payload);
-                  if (mounted) Navigator.pop(context);
+                  final vm = context.read<AthletesViewModel>();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Membresia asignada'),
+                      backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                    Navigator.pop(context);
+                  }
+                  vm.clearError();
                 }
               },
               child: const Text('ACTUALIZAR', style: TextStyle(color: Colors.white)),
@@ -544,7 +561,14 @@ class _AthletesViewState extends State<AthletesView> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               await context.read<AthletesViewModel>().delete(athlete.id!);
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<AthletesViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta eliminado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Eliminar'),
           ),

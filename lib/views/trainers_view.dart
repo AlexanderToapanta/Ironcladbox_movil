@@ -239,8 +239,11 @@ class _TrainersViewState extends State<TrainersView> {
                 
                 if (mounted) {
                   Navigator.pop(context);
-                  context.read<TrainersViewModel>().loadAll();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Entrenador creado'),
+                    backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
                 }
+                vm.clearError();
               },
               child: const Text('Crear'),
             ),
@@ -346,7 +349,14 @@ class _TrainersViewState extends State<TrainersView> {
                 'certificaciones': certController.text.trim(),
                 'biografia': bioController.text.trim(),
               });
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<TrainersViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Entrenador actualizado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Guardar'),
           ),
@@ -367,7 +377,14 @@ class _TrainersViewState extends State<TrainersView> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               await context.read<TrainersViewModel>().delete(trainer.id!);
-              if (mounted) Navigator.pop(context);
+              final vm = context.read<TrainersViewModel>();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Entrenador eliminado'),
+                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                Navigator.pop(context);
+              }
+              vm.clearError();
             },
             child: const Text('Eliminar'),
           ),
