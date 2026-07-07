@@ -32,6 +32,12 @@ class ApiConfig {
   
   // Endpoints de membresías
   static const String membershipsEndpoint = '/api/auth/memberships';
+
+  // Endpoints de admin
+  static const String adminAthletesEndpoint = '/api/admin/athletes';
+  static const String adminMembershipsEndpoint = '/api/admin/memberships';
+  static const String adminTrainersEndpoint = '/api/admin/trainers';
+  static const String adminAssignMembershipEndpoint = '/api/admin/memberships/assign';
   
   // Endpoints de ejercicios
   static const String ejerciciosEndpoint = '/api/ejercicios';
