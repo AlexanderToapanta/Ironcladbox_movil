@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/backend_api_models.dart';
 import '../viewmodels/backend_viewmodels.dart';
 import '../viewmodels/login_viewmodel.dart';
+import '../core/validators.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
 import 'widgets/atoms/ironclad_loading_indicator.dart';
 import 'widgets/atoms/ironclad_form_field.dart';
@@ -150,12 +151,16 @@ class _WodsViewState extends State<WodsView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (context) {
+        final formKey = GlobalKey<FormState>();
+        return StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1A1A1A),
           title: Text('Programar WOD: ${DateFormat('dd/MM/yyyy').format(date)}', style: const TextStyle(color: Colors.white, fontSize: 18)),
           content: SingleChildScrollView(
-            child: Column(
+            child: Form(
+              key: formKey,
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -163,7 +168,7 @@ class _WodsViewState extends State<WodsView> {
                   controller: titleController,
                   label: 'Nombre del Ejercicio *',
                   icon: Icons.title,
-                  validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
+                  validator: AppValidators.required,
                 ),
                 const SizedBox(height: 16),
                 IroncladFormField(
@@ -171,12 +176,13 @@ class _WodsViewState extends State<WodsView> {
                   label: 'Descripción',
                   icon: Icons.description,
                   keyboardType: TextInputType.multiline,
-                  validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
+                  validator: AppValidators.required,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   dropdownColor: const Color(0xFF2A2A2A),
                   value: selectedType,
+                  validator: (v) => v == null ? 'Selecciona un tipo' : null,
                   items: ['AMRAP', 'FOR TIME', 'EMOM', 'TABATA', 'STRENGTH', 'CHIPPER', 'HERO', 'BENCHMARK']
                       .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 13))))
                       .toList(),
@@ -187,7 +193,8 @@ class _WodsViewState extends State<WodsView> {
                 DropdownButtonFormField<String>(
                   dropdownColor: const Color(0xFF2A2A2A),
                   value: selectedLevel,
-                  items: ['Principiante', 'Intermedio', 'Avanzado', 'RX', 'Scaled']
+                  validator: (v) => v == null ? 'Selecciona un nivel' : null,
+                  items: ['Principiante', 'Intermedio', 'Avanzado', 'Todos']
                       .map((l) => DropdownMenuItem(value: l, child: Text(l, style: const TextStyle(color: Colors.white, fontSize: 13))))
                       .toList(),
                   onChanged: (v) => setDialogState(() => selectedLevel = v),
@@ -261,11 +268,22 @@ class _WodsViewState extends State<WodsView> {
                 ),
               ],
             ),
-          ),
+          ),),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                if (selectedType == null || selectedLevel == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona tipo y nivel del WOD'), backgroundColor: Colors.red));
+                  return;
+                }
+                for (final s in schedulesPayload) {
+                  if (s['id_entrenador'] == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Asigna un entrenador a cada horario'), backgroundColor: Colors.red));
+                    return;
+                  }
+                }
                 final payload = {
                   'fecha': date.toIso8601String().split('T').first,
                   'titulo': titleController.text.trim(),
@@ -282,7 +300,8 @@ class _WodsViewState extends State<WodsView> {
             ),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 
@@ -320,7 +339,10 @@ class _WodsViewState extends State<WodsView> {
                   ],
                 ),
               ),
-              if (_canManageWods(context.read<LoginViewModel>().currentRole)) IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () async { await vm.delete(wod.id!); _loadMonthData(_focusedDay); }),
+              if (_canManageWods(context.read<LoginViewModel>().currentRole)) Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => _showEditWodDialog(wod), tooltip: 'Editar'),
+                IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () async { await vm.delete(wod.id!); _loadMonthData(_focusedDay); }),
+              ]),
             ],
           ),
           const SizedBox(height: 20),
@@ -371,9 +393,9 @@ class _WodsViewState extends State<WodsView> {
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                        Text(h.hora?.substring(0, 5) ?? '--:--', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: canEnroll ? const Color(0xFF4CAF50) : Colors.grey)),
-                        if (!canEnroll) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(8)), child: const Text('PASADO', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)))
-                        else Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(8)), child: const Text('DISPONIBLE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold))),
+                        Expanded(child: Text(h.hora?.substring(0, 5) ?? '--:--', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: canEnroll ? const Color(0xFF4CAF50) : Colors.grey))),
+                        Flexible(child: !canEnroll ? Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(8)), child: const Text('PASADO', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)))
+                        : Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(8)), child: const Text('DISPONIBLE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)))),
                       ]),
                       const SizedBox(height: 12),
                       Text('👥 ${h.inscritos ?? 0}/${h.cupoMaximo ?? 12}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
@@ -390,6 +412,63 @@ class _WodsViewState extends State<WodsView> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  void _showEditWodDialog(WodDto wod) {
+    final tituloController = TextEditingController(text: wod.titulo);
+    final descController = TextEditingController(text: wod.descripcion);
+    String tipo = wod.tipo ?? 'AMRAP';
+    String nivel = wod.nivel ?? 'Intermedio';
+    const tipos = ['AMRAP', 'FOR TIME', 'EMOM', 'TABATA', 'STRENGTH', 'CHIPPER', 'HERO', 'BENCHMARK'];
+    const niveles = ['Principiante', 'Intermedio', 'Avanzado', 'Todos'];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        final formKey = GlobalKey<FormState>();
+        return StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Editar WOD'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+              IroncladFormField(controller: tituloController, label: 'Titulo', icon: Icons.fitness_center, validator: AppValidators.required),
+              const SizedBox(height: 12),
+              IroncladFormField(controller: descController, label: 'Descripcion', icon: Icons.description, keyboardType: TextInputType.multiline, validator: AppValidators.required),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: tipos.contains(tipo) ? tipo : tipos[0],
+                validator: (v) => v == null ? 'Selecciona un tipo' : null,
+                decoration: const InputDecoration(labelText: 'Tipo de WOD', prefixIcon: Icon(Icons.category)),
+                items: tipos.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (v) => setDialogState(() => tipo = v!),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: niveles.contains(nivel) ? nivel : niveles[1],
+                validator: (v) => v == null ? 'Selecciona un nivel' : null,
+                decoration: const InputDecoration(labelText: 'Nivel', prefixIcon: Icon(Icons.signal_cellular_alt)),
+                items: niveles.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+                onChanged: (v) => setDialogState(() => nivel = v!),
+              ),
+            ]),
+          ),),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                await context.read<WodsViewModel>().update(wod.id!, {'titulo': tituloController.text.trim(), 'descripcion': descController.text.trim(), 'tipo': tipo, 'nivel': nivel});
+                if (mounted) { Navigator.pop(context); _loadMonthData(_focusedDay); context.read<WodsViewModel>().loadByDate(_selectedDay!); }
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      );
+      },
     );
   }
 

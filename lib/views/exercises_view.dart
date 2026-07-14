@@ -23,6 +23,7 @@ class ExercisesView extends StatefulWidget {
 class _ExercisesViewState extends State<ExercisesView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  bool _showInactive = false;
 
   @override
   void initState() {
@@ -65,6 +66,7 @@ class _ExercisesViewState extends State<ExercisesView> {
       body: Consumer<ExercisesViewModel>(
         builder: (context, vm, _) {
           final filteredItems = vm.items
+              .where((e) => _showInactive || e.activo != false)
               .where((e) => e.nombre.toLowerCase().contains(_searchQuery.toLowerCase()))
               .toList();
 
@@ -99,6 +101,14 @@ class _ExercisesViewState extends State<ExercisesView> {
                   ),
                 ),
               ),
+              if (canManage)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(children: [
+                    Switch(value: _showInactive, activeColor: const Color(0xFFFF3B30), onChanged: (v) => setState(() => _showInactive = v)),
+                    const Text('Mostrar inactivos', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  ]),
+                ),
               if (vm.isLoading && vm.items.isEmpty)
                 const IroncladLoadingIndicator(message: 'Cargando ejercicios...'),
               if (!vm.isLoading && filteredItems.isEmpty)
@@ -190,12 +200,21 @@ class _ExercisesViewState extends State<ExercisesView> {
                                   radius: 16,
                                   backgroundColor: Colors.black54,
                                   child: IconButton(
-                                    icon: const Icon(Icons.delete, size: 16, color: Color(0xFFFF3B30)),
+                                    icon: Icon(exercise.activo != false ? Icons.block : Icons.check_circle, size: 16, color: exercise.activo != false ? const Color(0xFFFF3B30) : Colors.green),
                                     padding: EdgeInsets.zero,
-                                    onPressed: () => _confirmDelete(exercise),
+                                    onPressed: () => exercise.activo != false ? _confirmDelete(exercise) : _reactivateExercise(exercise),
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                        if (exercise.activo == false)
+                          Positioned(
+                            top: 8, left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(8)),
+                              child: const Text('Inactivo', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                             ),
                           ),
                       ],
@@ -216,6 +235,11 @@ class _ExercisesViewState extends State<ExercisesView> {
             )
           : null,
     );
+  }
+
+  void _reactivateExercise(ExerciseDto exercise) async {
+    await context.read<ExercisesViewModel>().reactivate(exercise.id!);
+    if (mounted) setState(() {});
   }
 
   void _confirmDelete(ExerciseDto exercise) {
@@ -281,8 +305,19 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         imageQuality: 70,
       );
       if (image != null) {
+        final file = File(image.path);
+        final mime = image.mimeType ?? '';
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].contains(mime)) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Formato no permitido. Usa JPG, PNG, GIF o WEBP'), backgroundColor: Colors.red));
+          return;
+        }
+        final size = await file.length();
+        if (size > 5 * 1024 * 1024) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La imagen no debe superar 5 MB'), backgroundColor: Colors.red));
+          return;
+        }
         setState(() {
-          _pickedFile = File(image.path);
+          _pickedFile = file;
           _deleteCurrentImage = false;
         });
       }

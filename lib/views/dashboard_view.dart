@@ -8,6 +8,7 @@ import '../services/socket_service.dart';
 import '../viewmodels/login_viewmodel.dart';
 import '../viewmodels/backend_viewmodels.dart';
 import 'athletes_view.dart';
+import 'classes_view.dart';
 import 'dashboard_home_view.dart';
 import 'exercises_view.dart';
 import 'login_view.dart';
@@ -15,6 +16,8 @@ import 'memberships_view.dart';
 import 'my_membership_view.dart';
 import 'profile_view.dart';
 import 'progress_view.dart';
+import 'quick_actions_view.dart';
+import 'racha_view.dart';
 import 'trainers_view.dart';
 import 'wods_view.dart';
 import 'widgets/atoms/ironclad_logout_button.dart';
@@ -34,42 +37,75 @@ class _DashboardViewState extends State<DashboardView> {
   bool _isOffline = false;
   StreamSubscription<void>? _reconnectSub;
   StreamSubscription<void>? _sessionExpiredSub;
+  Timer? _autoRefreshTimer;
+  int _refreshFailureCount = 0;
 
   @override
   void initState() {
     super.initState();
     _currentRole = widget.role;
+    ApiService().resetSessionExpiredFlag();
     _checkUserStatus();
     _isOffline = ApiService().isOffline;
     _reconnectSub = SocketService().onReconnected.listen((_) {
       if (mounted) {
         setState(() => _isOffline = false);
         ApiService().drainQueue();
-        _refreshAllViewModels();
+        _safeRefreshAll();
       }
     });
     _sessionExpiredSub = ApiService().onSessionExpired.listen((_) {
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginView()),
-          (route) => false,
-        );
-      }
+      if (mounted) _handleSessionExpiredEvent();
     });
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (mounted) _safeRefreshAll();
+    });
+  }
+
+  Future<void> _handleSessionExpiredEvent() async {
+    final isValid = await AuthService().verifyToken();
+    if (!mounted) return;
+    if (isValid) {
+      ApiService().resetSessionExpiredFlag();
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginView()),
+      (route) => false,
+    );
   }
 
   @override
   void dispose() {
     _reconnectSub?.cancel();
     _sessionExpiredSub?.cancel();
+    _autoRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  void _safeRefreshAll() {
+    try {
+      _refreshAllViewModels();
+      _refreshFailureCount = 0;
+    } catch (_) {
+      _refreshFailureCount++;
+      if (_refreshFailureCount >= 3) {
+        if (mounted) _handleSessionExpiredEvent();
+      }
+    }
   }
 
   void _refreshAllViewModels() {
     try {
-      context.read<MembershipsViewModel>().loadAll();
-      context.read<AthletesViewModel>().loadAll();
-      context.read<TrainersViewModel>().loadAll();
+      final role = _currentRole.toLowerCase();
+      if (role == 'admin' || role == 'administrador') {
+        context.read<AthletesViewModel>().loadAll();
+        context.read<TrainersViewModel>().loadAll();
+        context.read<MembershipsViewModel>().loadAll();
+      }
+      if (role == 'trainer' || role == 'entrenador') {
+        context.read<AthletesViewModel>().loadMyAthletes();
+      }
       context.read<ClassesViewModel>().loadAll();
       context.read<ExercisesViewModel>().loadAll();
       context.read<WodsViewModel>().loadByMonth(DateTime.now().year, DateTime.now().month);
@@ -93,32 +129,23 @@ class _DashboardViewState extends State<DashboardView> {
 
     if (role == 'administrador' || role == 'admin') {
       return const [
+        _DashboardTab('Acciones', Icons.grid_view, 'Acceso Rapido'),
         _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
-        _DashboardTab('Atletas', Icons.groups, 'Gestion de atletas'),
-        _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
-        _DashboardTab('Entrenadores', Icons.badge, 'Gestion de entrenadores'),
-        _DashboardTab('Membresias', Icons.card_membership, 'Gestion de membresias'),
-        _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Ejercicios'),
         _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
     }
 
     if (role == 'entrenador' || role == 'trainer') {
       return const [
+        _DashboardTab('Acciones', Icons.grid_view, 'Acceso Rapido'),
         _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
-        _DashboardTab('WODs', Icons.fitness_center, 'Calendario WOD'),
-        _DashboardTab('Mis Atletas', Icons.groups, 'Consulta de mis atletas'),
-        _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Gestión de ejercicios'),
         _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
       ];
     }
 
     return const [
+      _DashboardTab('Acciones', Icons.grid_view, 'Acceso Rapido'),
       _DashboardTab('Inicio', Icons.dashboard, 'IronCladBox'),
-      _DashboardTab('WODs', Icons.fitness_center, 'Consultar WOD'),
-      _DashboardTab('Membresía', Icons.card_membership, 'Mi Membresía'),
-      _DashboardTab('Progreso', Icons.show_chart, 'Registrar progreso'),
-      _DashboardTab('Ejercicios', Icons.sports_gymnastics, 'Biblioteca de ejercicios'),
       _DashboardTab('Perfil', Icons.person, 'Mi Perfil'),
     ];
   }
@@ -231,32 +258,23 @@ List<Widget> _pagesForRole(String role) {
 
   if (normalized == 'admin' || normalized == 'administrador') {
     return const [
+      QuickActionsView(role: 'admin'),
       DashboardHomeView(role: 'admin'),
-      AthletesView(),
-      WodsView(),
-      TrainersView(),
-      MembershipsView(),
-      ExercisesView(),
       ProfileView(),
     ];
   }
 
   if (normalized == 'trainer' || normalized == 'entrenador') {
     return const [
+      QuickActionsView(role: 'trainer'),
       DashboardHomeView(role: 'trainer'),
-      WodsView(),
-      AthletesView(),
-      ExercisesView(),
       ProfileView(),
     ];
   }
 
   return const [
+    QuickActionsView(role: 'athlete'),
     DashboardHomeView(role: 'athlete'),
-    WodsView(),
-    MyMembershipView(),
-    ProgressView(),
-    ExercisesView(),
     ProfileView(),
   ];
 }

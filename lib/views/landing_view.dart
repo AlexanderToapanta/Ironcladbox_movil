@@ -71,7 +71,7 @@ class _LandingViewState extends State<LandingView> {
       if (membersRes.data is Map && membersRes.data['data'] is List) { _memberships = membersRes.data['data']; anySuccess = true; }
     } catch (_) {}
     try {
-      final statsRes = await api.get(ApiConfig.adminStats);
+      final statsRes = await api.get('/api/public/stats');
       if (statsRes.data is Map && statsRes.data['data'] is Map) {
         _stats = Map<String, int>.from((statsRes.data['data'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt())));
         anySuccess = true;
@@ -209,16 +209,20 @@ class _LandingViewState extends State<LandingView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton(
-                onPressed: () => Scrollable.ensureVisible(_membershipKey.currentContext!, duration: const Duration(milliseconds: 500)),
-                style: ElevatedButton.styleFrom(backgroundColor: _red, padding: EdgeInsets.symmetric(horizontal: isSmall ? 14 : 20, vertical: 10)),
-                child: Text('COMENZAR AHORA', style: TextStyle(fontSize: isSmall ? 10 : 12)),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Scrollable.ensureVisible(_membershipKey.currentContext!, duration: const Duration(milliseconds: 500)),
+                  style: ElevatedButton.styleFrom(backgroundColor: _red, padding: EdgeInsets.symmetric(horizontal: isSmall ? 14 : 20, vertical: 10)),
+                  child: Text('COMENZAR AHORA', style: TextStyle(fontSize: isSmall ? 10 : 12)),
+                ),
               ),
               SizedBox(width: isSmall ? 8 : 12),
-              OutlinedButton(
-                onPressed: () => Scrollable.ensureVisible(_aboutKey.currentContext!, duration: const Duration(milliseconds: 500)),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: _border), padding: EdgeInsets.symmetric(horizontal: isSmall ? 14 : 20, vertical: 10)),
-                child: Text('CONOCE MAS', style: TextStyle(fontSize: isSmall ? 10 : 12)),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Scrollable.ensureVisible(_aboutKey.currentContext!, duration: const Duration(milliseconds: 500)),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: _border), padding: EdgeInsets.symmetric(horizontal: isSmall ? 14 : 20, vertical: 10)),
+                  child: Text('CONOCE MAS', style: TextStyle(fontSize: isSmall ? 10 : 12)),
+                ),
               ),
             ],
           ),
@@ -240,6 +244,11 @@ class _LandingViewState extends State<LandingView> {
           FittedBox(child: Text('EL MEJOR CROSSFIT DE QUITO', style: const TextStyle(color: _red, fontSize: 13, fontWeight: FontWeight.w700))),
           const SizedBox(height: 8),
           const Text('IroncladBox es mas que un gimnasio, es una comunidad dedicada a transformar vidas a traves del fitness funcional.', style: TextStyle(color: _gray, fontSize: 11, height: 1.4), textAlign: TextAlign.center),
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text('Nuestras instalaciones cuentan con el mejor equipo y un ambiente motivador donde atletas de todos los niveles pueden alcanzar sus objetivos.', style: TextStyle(color: _gray, fontSize: 11, height: 1.4), textAlign: TextAlign.center),
+          ),
           const SizedBox(height: 14),
           Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
             _featureCard(Icons.fitness_center, 'Equipo', 'Instalaciones'),
@@ -249,8 +258,9 @@ class _LandingViewState extends State<LandingView> {
           const SizedBox(height: 16),
           Wrap(spacing: isSmall ? 10 : 16, runSpacing: 8, alignment: WrapAlignment.center, children: [
             _statCard(_stats['totalAthletes']?.toString() ?? '0', 'Atletas'),
+            _statCard(_stats['activeAthletes']?.toString() ?? '0', 'Activos'),
             _statCard(_stats['totalTrainers']?.toString() ?? '2', 'Coaches'),
-            _statCard(_stats['totalWODs']?.toString() ?? '0', 'Clases'),
+            _statCard(_stats['totalWODs']?.toString() ?? '0', 'WODs'),
             _statCard(_stats['totalMemberships']?.toString() ?? '4', 'Planes'),
           ]),
         ],
@@ -455,7 +465,7 @@ class _LandingViewState extends State<LandingView> {
           TextButton(onPressed: () {}, child: const Text('YT', style: TextStyle(color: _red, fontSize: 11))),
         ]),
         const SizedBox(height: 6),
-        const Text('Lun-Vie: 06:00-21:00 | Sab: 08:00-14:00 | Dom: Cerrado', style: TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center),
+        const Text('Lun-Vie: 06:00-21:00 | Sab: 08:00-14:00 | Dom: Cerrado', style: TextStyle(color: _gray, fontSize: 9), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 10),
         ElevatedButton.icon(onPressed: _goToLogin, icon: const Icon(Icons.login, size: 14), label: const Text('INICIAR SESION'), style: ElevatedButton.styleFrom(backgroundColor: _red, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), textStyle: const TextStyle(fontSize: 11))),
         const SizedBox(height: 8),

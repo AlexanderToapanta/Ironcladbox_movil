@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'api_service.dart';
 import '../core/config/api_config.dart';
@@ -212,16 +213,51 @@ class AuthService {
     }
   }
   
+  /// Verifica si el token JWT expirara en los proximos minutos
+  Future<bool> isTokenAboutToExpire({int minutesThreshold = 5}) async {
+    try {
+      final token = await _apiService.getToken();
+      if (token == null) return true;
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = json.decode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+      final exp = payload['exp'] as int?;
+      if (exp == null) return false;
+      final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      return expiryDate.difference(DateTime.now()).inMinutes < minutesThreshold;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Verificar token - valida si el token es válido
   Future<bool> verifyToken() async {
     try {
       final token = await _apiService.getToken();
       if (token == null) return false;
-      
+
       final response = await _apiService.get(ApiConfig.verifyTokenEndpoint);
-      return response.statusCode == 200;
-    } catch (e) {
+      if (response.statusCode == 200) {
+        try {
+          final newToken = _extractToken(response.data);
+          if (newToken.isNotEmpty && newToken != token) {
+            await _apiService.setToken(newToken);
+          }
+        } catch (_) {}
+        return true;
+      }
       return false;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        return false;
+      }
+      final token = await _apiService.getToken();
+      return token != null;
+    } catch (e) {
+      final token = await _apiService.getToken();
+      return token != null;
     }
   }
   

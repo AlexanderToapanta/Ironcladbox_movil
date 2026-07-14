@@ -16,6 +16,8 @@ class ApiService {
   bool _isOffline = false;
   bool _lastWriteQueued = false;
 
+  bool _sessionExpiredFired = false;
+
   final _sessionExpiredController = StreamController<void>.broadcast();
   Stream<void> get onSessionExpired => _sessionExpiredController.stream;
 
@@ -54,7 +56,7 @@ class ApiService {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          if (response.data is Map && response.data['sessionExpired'] == true) {
+          if (!_sessionExpiredFired && response.data is Map && response.data['sessionExpired'] == true) {
             _handleSessionExpired();
           }
           if (response.requestOptions.method.toUpperCase() == 'GET') {
@@ -65,8 +67,13 @@ class ApiService {
           return handler.next(response);
         },
         onError: (error, handler) {
-          if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
+          if (!_sessionExpiredFired && error.response?.statusCode == 401) {
             _handleSessionExpired();
+          } else if (!_sessionExpiredFired && error.response?.statusCode == 403) {
+            final data = error.response?.data;
+            if (data is Map && data['sessionExpired'] == true) {
+              _handleSessionExpired();
+            }
           }
           return handler.next(error);
         },
@@ -75,11 +82,17 @@ class ApiService {
   }
 
   void _handleSessionExpired() {
+    if (_sessionExpiredFired) return;
+    _sessionExpiredFired = true;
     _secureStorage.delete(key: 'jwt_token');
     _secureStorage.delete(key: 'user_role');
     _cache.clear();
     _queue.clear();
     _sessionExpiredController.add(null);
+  }
+
+  void resetSessionExpiredFlag() {
+    _sessionExpiredFired = false;
   }
 
   bool _isConnectionError(DioException e) {
@@ -108,9 +121,6 @@ class ApiService {
           );
         }
       }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
-      }
       _isOffline = _isConnectionError(e);
       rethrow;
     }
@@ -134,9 +144,6 @@ class ApiService {
           extra: {'queued': true},
         );
       }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
-      }
       rethrow;
     }
   }
@@ -158,9 +165,6 @@ class ApiService {
           data: {'success': true, 'message': 'Guardado localmente. Se sincronizara al reconectar.', 'queued': true},
           extra: {'queued': true},
         );
-      }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
       }
       rethrow;
     }
@@ -191,9 +195,6 @@ class ApiService {
           extra: {'queued': true},
         );
       }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
-      }
       rethrow;
     }
   }
@@ -215,9 +216,6 @@ class ApiService {
           data: {'success': true, 'message': 'Eliminado localmente. Se sincronizara al reconectar.', 'queued': true},
           extra: {'queued': true},
         );
-      }
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        _handleSessionExpired();
       }
       rethrow;
     }

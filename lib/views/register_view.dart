@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../services/auth_service.dart';
 import '../viewmodels/backend_viewmodels.dart';
+import '../core/validators.dart';
 import 'login_view.dart';
 import 'widgets/atoms/ironclad_background.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
@@ -162,7 +163,7 @@ class _RegisterViewState extends State<RegisterView> {
                                   controller: _nombreController,
                                   label: 'Nom...',
                                   icon: Icons.person_outline,
-                                  validator: (value) => value == null || value.isEmpty ? 'Ingresa tu nombre' : null,
+                                  validator: AppValidators.required,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -171,7 +172,7 @@ class _RegisterViewState extends State<RegisterView> {
                                   controller: _apellidoController,
                                   label: 'Apell...',
                                   icon: Icons.person_outline,
-                                  validator: (value) => value == null || value.isEmpty ? 'Ingresa tu apellido' : null,
+                                  validator: AppValidators.required,
                                 ),
                               ),
                             ],
@@ -182,7 +183,7 @@ class _RegisterViewState extends State<RegisterView> {
                             label: 'Correo',
                             icon: Icons.mail_outline,
                             keyboardType: TextInputType.emailAddress,
-                            validator: (value) => value == null || value.isEmpty ? 'Ingresa tu correo' : null,
+                            validator: AppValidators.email,
                           ),
                           const SizedBox(height: 16),
                           IroncladFormField(
@@ -190,14 +191,14 @@ class _RegisterViewState extends State<RegisterView> {
                             label: 'Teléfono',
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
-                            validator: (value) => value == null || value.isEmpty ? 'Ingresa tu teléfono' : null,
+                            validator: AppValidators.phone,
                           ),
                           const SizedBox(height: 16),
                           IroncladFormField(
                             controller: _direccionController,
                             label: 'Dirección',
                             icon: Icons.location_on_outlined,
-                            validator: (value) => value == null || value.isEmpty ? 'Ingresa tu dirección' : null,
+                            validator: AppValidators.required,
                           ),
                           const SizedBox(height: 16),
                           InkWell(
@@ -224,7 +225,7 @@ class _RegisterViewState extends State<RegisterView> {
                                   label: 'Cont...',
                                   icon: Icons.lock_outline,
                                   obscureText: true,
-                                  validator: (value) => value == null || value.length < 8 ? 'Mínimo 8 caracteres' : null,
+                                  validator: AppValidators.password,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -248,7 +249,7 @@ class _RegisterViewState extends State<RegisterView> {
                                   label: 'Peso...',
                                   icon: Icons.monitor_weight_outlined,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (value) => null,
+                                  validator: AppValidators.peso,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -258,7 +259,7 @@ class _RegisterViewState extends State<RegisterView> {
                                   label: 'Altur...',
                                   icon: Icons.height_outlined,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (value) => null,
+                                  validator: AppValidators.altura,
                                 ),
                               ),
                             ],

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/backend_api_models.dart';
 import '../viewmodels/backend_viewmodels.dart';
 import '../viewmodels/login_viewmodel.dart';
+import '../core/validators.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
 import 'widgets/atoms/ironclad_loading_indicator.dart';
 import 'widgets/atoms/ironclad_form_field.dart';
@@ -334,6 +335,7 @@ class _ProgressViewState extends State<ProgressView> {
               label: 'Ej: 135.5',
               icon: Icons.monitor_weight_outlined,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: AppValidators.marca,
             ),
           ],
         ),
@@ -346,13 +348,32 @@ class _ProgressViewState extends State<ProgressView> {
             onPressed: () async {
               final double? val = double.tryParse(controller.text);
               if (val != null) {
-                await context.read<ProgressViewModel>().updateMark({
+                final vm = context.read<ProgressViewModel>();
+                await vm.updateMark({
                   'id_ejercicio': exercise.id,
                   'marca_maxima': val,
                 });
                 if (mounted) {
                   Navigator.pop(context);
-                  context.read<ProgressViewModel>().loadAll(); // Recargar para actualizar UI
+                  final prevMark = progress.marcaMaxima ?? 0;
+                  String msg = 'Marca registrada exitosamente!';
+                  if (prevMark > 0) {
+                    if (val > prevMark) {
+                      msg = 'Nuevo récord personal! +${(val - prevMark).toStringAsFixed(1)} lb. Sigue mejorando!';
+                    } else if (val < prevMark) {
+                      msg = 'No te desanimes! Sigue entrenando, volverás más fuerte.';
+                    } else {
+                      msg = 'Mantienes tu marca! La consistencia es clave.';
+                    }
+                  } else {
+                    msg = 'Primera marca registrada! A superarte cada día!';
+                  }
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(msg), backgroundColor: const Color(0xFF06D6A0), duration: const Duration(seconds: 4)),
+                    );
+                  }
+                  vm.loadAll();
                 }
               }
             },

@@ -132,6 +132,7 @@ class AthleteDto {
   final DateTime? fechaNacimiento;
   final double? peso;
   final double? altura;
+  final String? contactoEmergencia;
   final int? membershipId;
   final DateTime? fechaRegistro;
   final DateTime? fechaInicioMembresia;
@@ -157,6 +158,7 @@ class AthleteDto {
     this.fechaNacimiento,
     this.peso,
     this.altura,
+    this.contactoEmergencia,
     this.membershipId,
     this.fechaRegistro,
     this.fechaInicioMembresia,
@@ -184,6 +186,7 @@ class AthleteDto {
       fechaNacimiento: parseApiDate(json['fecha_nacimiento'] ?? json['fechaNacimiento']),
       peso: parseApiDouble(json['peso']),
       altura: parseApiDouble(json['altura']),
+      contactoEmergencia: json['contacto_emergencia']?.toString() ?? json['contactoEmergencia']?.toString(),
       membershipId: parseApiInt(json['id_membresia'] ?? json['idMembresia']),
       fechaRegistro: parseApiDate(json['fecha_registro'] ?? json['fechaRegistro']),
       fechaInicioMembresia: parseApiDate(json['fecha_inicio'] ?? json['fecha_inicio_membresia'] ?? json['fechaInicioMembresia']),
@@ -206,6 +209,7 @@ class AthleteDto {
         'altura': altura,
         'direccion': direccion,
         'fecha_nacimiento': fechaNacimiento?.toIso8601String(),
+        'contacto_emergencia': contactoEmergencia,
         'id_membresia': membershipId,
         'fecha_inicio_membresia': fechaInicioMembresia?.toIso8601String(),
         'fecha_fin_membresia': fechaFinMembresia?.toIso8601String(),

@@ -6,6 +6,7 @@ import 'widgets/atoms/ironclad_form_field.dart';
 import 'widgets/atoms/ironclad_primary_button.dart';
 import 'widgets/atoms/ironclad_status_banner.dart';
 import 'widgets/molecules/ironclad_auth_card.dart';
+import '../core/validators.dart';
 import '../viewmodels/login_viewmodel.dart';
 import 'dashboard_view.dart';
 import 'landing_view.dart';
@@ -77,12 +78,7 @@ class _LoginViewState extends State<LoginView> {
                             keyboardType: TextInputType.emailAddress,
                             label: 'Correo',
                             icon: Icons.mail_outline,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Ingresa tu correo';
-                              }
-                              return null;
-                            },
+                            validator: AppValidators.email,
                           ),
                           const SizedBox(height: 16),
                           IroncladFormField(
@@ -90,12 +86,7 @@ class _LoginViewState extends State<LoginView> {
                             obscureText: true,
                             label: 'Contraseña',
                             icon: Icons.lock_outline,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Ingresa tu contraseña';
-                              }
-                              return null;
-                            },
+                            validator: AppValidators.required,
                           ),
                           const SizedBox(height: 24),
                           if (viewModel.errorMessage.isNotEmpty) ...[

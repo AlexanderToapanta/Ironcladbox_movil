@@ -6,6 +6,8 @@ import '../models/backend_api_models.dart';
 import '../viewmodels/backend_viewmodels.dart';
 import '../viewmodels/login_viewmodel.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
+import '../core/validators.dart';
 import 'widgets/atoms/ironclad_empty_state.dart';
 import 'widgets/atoms/ironclad_loading_indicator.dart';
 import 'widgets/atoms/ironclad_form_field.dart';
@@ -21,6 +23,7 @@ class AthletesView extends StatefulWidget {
 class _AthletesViewState extends State<AthletesView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  bool _showExpiredOnly = false;
 
   @override
   void initState() {
@@ -42,6 +45,40 @@ class _AthletesViewState extends State<AthletesView> {
     super.dispose();
   }
 
+  Future<void> _deactivateExpired() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Desactivar vencidas?'),
+        content: const Text('Se desactivaran todos los atletas con membresia vencida.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Si, desactivar'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      try {
+        final api = ApiService();
+        await api.post('/api/admin/memberships/deactivate-expired', data: {});
+        await context.read<AthletesViewModel>().loadAll();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Atletas vencidos desactivados'), backgroundColor: Colors.green));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = context.watch<LoginViewModel>().currentRole.toLowerCase();
@@ -55,11 +92,15 @@ class _AthletesViewState extends State<AthletesView> {
         builder: (context, vm, _) {
           if (vm.isLoading && vm.items.isEmpty) return const IroncladLoadingIndicator(message: 'Cargando atletas...');
           
-          final items = vm.items;
+          final items = _showExpiredOnly 
+              ? vm.items.where((a) => a.isExpired == true).toList()
+              : vm.items;
           final filteredItems = items.where((a) {
             final name = '${a.nombre} ${a.apellido}'.toLowerCase();
             final email = (a.email ?? '').toLowerCase();
-            return name.contains(_searchQuery.toLowerCase()) || email.contains(_searchQuery.toLowerCase());
+            final membership = (a.membershipName ?? '').toLowerCase();
+            final q = _searchQuery.toLowerCase();
+            return name.contains(q) || email.contains(q) || membership.contains(q);
           }).toList();
 
           return RefreshIndicator(
@@ -86,7 +127,7 @@ class _AthletesViewState extends State<AthletesView> {
                     onChanged: (v) => setState(() => _searchQuery = v),
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'Buscar por nombre o email...',
+                      hintText: 'Buscar por nombre, email o membresia...',
                       prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.05),
@@ -94,6 +135,33 @@ class _AthletesViewState extends State<AthletesView> {
                     ),
                   ),
                 ),
+
+                if (isAdmin)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Switch(
+                                value: _showExpiredOnly,
+                                activeColor: const Color(0xFFFF3B30),
+                                onChanged: (v) => setState(() => _showExpiredOnly = v),
+                              ),
+                              const Text('Solo vencidas', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _deactivateExpired(),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade800),
+                          icon: const Icon(Icons.person_off, size: 16),
+                          label: const Text('Desactivar', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 if (!vm.isLoading && filteredItems.isEmpty)
                   IroncladEmptyState(
@@ -241,6 +309,7 @@ class _AthletesViewState extends State<AthletesView> {
   }
 
   void _showAddAthleteDialog() {
+    final scaffoldContext = context;
     final nameController = TextEditingController();
     final lastNameController = TextEditingController();
     final emailController = TextEditingController();
@@ -253,25 +322,29 @@ class _AthletesViewState extends State<AthletesView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (context) {
+        final formKey = GlobalKey<FormState>();
+        return StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Nuevo Atleta'),
           content: SingleChildScrollView(
-            child: Column(
+            child: Form(
+              key: formKey,
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IroncladFormField(
                   controller: nameController,
                   label: 'Nombre',
                   icon: Icons.person,
-                  validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+                  validator: AppValidators.minLength(2),
                 ),
                 const SizedBox(height: 12),
                 IroncladFormField(
                   controller: lastNameController,
                   label: 'Apellido',
                   icon: Icons.person,
-                  validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+                  validator: AppValidators.required,
                 ),
                 const SizedBox(height: 12),
                 IroncladFormField(
@@ -279,7 +352,7 @@ class _AthletesViewState extends State<AthletesView> {
                   label: 'Email',
                   icon: Icons.email,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+                  validator: AppValidators.email,
                 ),
                 const SizedBox(height: 12),
                 InkWell(
@@ -297,6 +370,7 @@ class _AthletesViewState extends State<AthletesView> {
                       labelText: 'Fecha de Nacimiento',
                       prefixIcon: const Icon(Icons.cake),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      errorText: formKey.currentState != null ? null : (birthDate == null ? 'La fecha de nacimiento es requerida' : AppValidators.fechaNacimiento(birthDate)),
                     ),
                     child: Text(birthDate == null ? 'Seleccionar' : DateFormat('dd/MM/yyyy').format(birthDate!)),
                   ),
@@ -307,14 +381,14 @@ class _AthletesViewState extends State<AthletesView> {
                   label: 'Teléfono',
                   icon: Icons.phone,
                   keyboardType: TextInputType.phone,
-                  validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+                  validator: AppValidators.phone,
                 ),
                 const SizedBox(height: 12),
                 IroncladFormField(
                   controller: addressController,
                   label: 'Dirección',
                   icon: Icons.location_on,
-                  validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+                  validator: AppValidators.required,
                 ),
                 const SizedBox(height: 12),
                 IroncladFormField(
@@ -322,7 +396,7 @@ class _AthletesViewState extends State<AthletesView> {
                   label: 'Peso (kg)',
                   icon: Icons.monitor_weight,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => null,
+                  validator: AppValidators.peso,
                 ),
                 const SizedBox(height: 12),
                 IroncladFormField(
@@ -330,41 +404,112 @@ class _AthletesViewState extends State<AthletesView> {
                   label: 'Altura (m)',
                   icon: Icons.height,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => null,
+                  validator: AppValidators.altura,
                 ),
                 const SizedBox(height: 12),
                 IroncladFormField(
                   controller: emergencyController,
                   label: 'Contacto de Emergencia',
                   icon: Icons.contact_emergency,
-                  validator: (v) => null,
                 ),
               ],
             ),
+          ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                final bd = birthDate ?? DateTime.now().subtract(const Duration(days: 365 * 20));
+                if (!formKey.currentState!.validate()) return;
+                if (birthDate == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona la fecha de nacimiento'), backgroundColor: Colors.red));
+                  return;
+                }
+                final edadErr = AppValidators.fechaNacimiento(birthDate);
+                if (edadErr != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(edadErr), backgroundColor: Colors.red));
+                  return;
+                }
+
+                final peso = double.tryParse(weightController.text);
+                final altura = double.tryParse(heightController.text);
+                if ((peso ?? 0) > 0 && (altura ?? 0) > 0) {
+                  final shouldContinue = await AppValidators.showImcWarning(context, peso!, altura!);
+                  if (!shouldContinue) return;
+                }
+
                 final vm = context.read<AthletesViewModel>();
-                await vm.create({
+                final payload = <String, dynamic>{
                   'nombre': nameController.text.trim(),
                   'apellido': lastNameController.text.trim(),
                   'email': emailController.text.trim(),
-                  'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(bd),
+                  'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(birthDate!),
                   'telefono': phoneController.text.trim(),
                   'direccion': addressController.text.trim(),
                   'contacto_emergencia': emergencyController.text.trim(),
-                  'peso': double.tryParse(weightController.text) ?? 0,
-                  'altura': double.tryParse(heightController.text) ?? 0,
-                });
+                };
+                if (peso != null) payload['peso'] = peso;
+                if (altura != null) payload['altura'] = altura;
+                await vm.create(payload);
                 
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta creado'),
-                    backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                if (!mounted) return;
+                Navigator.pop(context);
+
+                if (vm.errorMessage.isEmpty) {
+                  final generatedPassword = '${birthDate!.day.toString().padLeft(2, '0')}${birthDate!.month.toString().padLeft(2, '0')}${birthDate!.year}';
+                  await showDialog(
+                    context: scaffoldContext,
+                    builder: (ctx) => AlertDialog(
+                      title: const Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green),
+                          SizedBox(width: 8),
+                          Text('Atleta creado'),
+                        ],
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('La contraseña se generó a partir de la fecha de nacimiento:', style: TextStyle(color: Colors.white70)),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2A2A2A),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('CONTRASEÑA', style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 1.5)),
+                                const SizedBox(height: 4),
+                                Text(generatedPassword, style: const TextStyle(color: Color(0xFFFF3B30), fontWeight: FontWeight.bold, fontSize: 22, letterSpacing: 2)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Fecha de nacimiento: ${DateFormat('dd/MM/yyyy').format(birthDate!)}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          const SizedBox(height: 16),
+                          const Text('Comparte esta contraseña con el usuario para que pueda iniciar sesión.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                      actions: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
+                          child: const Text('Entendido', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  if (scaffoldContext.mounted) {
+                    ScaffoldMessenger.of(scaffoldContext).showSnackBar(SnackBar(
+                      content: Text(vm.errorMessage),
+                      backgroundColor: Colors.red));
+                  }
                 }
                 vm.clearError();
               },
@@ -372,7 +517,8 @@ class _AthletesViewState extends State<AthletesView> {
             ),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 
@@ -382,78 +528,156 @@ class _AthletesViewState extends State<AthletesView> {
     final emailController = TextEditingController(text: athlete.email);
     final phoneController = TextEditingController(text: athlete.telefono);
     final addressController = TextEditingController(text: athlete.direccion);
+    final pesoController = TextEditingController(text: (athlete.peso ?? 0) > 0 ? athlete.peso.toString() : '');
+    final alturaController = TextEditingController(text: (athlete.altura ?? 0) > 0 ? athlete.altura.toString() : '');
+    final emergencyController = TextEditingController(text: athlete.contactoEmergencia ?? '');
+    DateTime? birthDate = athlete.fechaNacimiento;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Atleta'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IroncladFormField(
-                controller: nameController,
-                label: 'Nombre',
-                icon: Icons.person,
-                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 12),
-              IroncladFormField(
-                controller: lastNameController,
-                label: 'Apellido',
-                icon: Icons.person,
-                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 12),
-              IroncladFormField(
-                controller: emailController,
-                label: 'Email',
-                icon: Icons.email,
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 12),
-              IroncladFormField(
-                controller: phoneController,
-                label: 'Teléfono',
-                icon: Icons.phone,
-                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 12),
-              IroncladFormField(
-                controller: addressController,
-                label: 'Dirección',
-                icon: Icons.location_on,
-                validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
-              ),
-            ],
+      builder: (context) {
+        final formKey = GlobalKey<FormState>();
+        return StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Editar Atleta'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IroncladFormField(
+                  controller: nameController,
+                  label: 'Nombre',
+                  icon: Icons.person,
+                  validator: AppValidators.minLength(2),
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: lastNameController,
+                  label: 'Apellido',
+                  icon: Icons.person,
+                  validator: AppValidators.required,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: emailController,
+                  label: 'Email',
+                  icon: Icons.email,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: AppValidators.email,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: phoneController,
+                  label: 'Telefono',
+                  icon: Icons.phone,
+                  validator: AppValidators.phone,
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: addressController,
+                  label: 'Direccion',
+                  icon: Icons.location_on,
+                  validator: AppValidators.required,
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: birthDate ?? DateTime.now().subtract(const Duration(days: 365 * 18)),
+                      firstDate: DateTime(1900),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setDialogState(() => birthDate = picked);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Fecha de Nacimiento',
+                      prefixIcon: const Icon(Icons.cake),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(birthDate == null ? 'Seleccionar' : DateFormat('dd/MM/yyyy').format(birthDate!)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                IroncladFormField(
+                  controller: emergencyController,
+                  label: 'Contacto de Emergencia',
+                  icon: Icons.contact_emergency,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: IroncladFormField(
+                        controller: pesoController,
+                        label: 'Peso (kg)',
+                        icon: Icons.monitor_weight,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        validator: AppValidators.peso,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: IroncladFormField(
+                        controller: alturaController,
+                        label: 'Altura (m)',
+                        icon: Icons.height,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        validator: AppValidators.altura,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+
+                final peso = double.tryParse(pesoController.text);
+                final altura = double.tryParse(alturaController.text);
+                if ((peso ?? 0) > 0 && (altura ?? 0) > 0) {
+                  final shouldContinue = await AppValidators.showImcWarning(context, peso!, altura!);
+                  if (!shouldContinue) return;
+                }
+
+                final payload = <String, dynamic>{
+                  'nombre': nameController.text.trim(),
+                  'apellido': lastNameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'telefono': phoneController.text.trim(),
+                  'direccion': addressController.text.trim(),
+                  'contacto_emergencia': emergencyController.text.trim(),
+                };
+                if (birthDate != null) {
+                  payload['fecha_nacimiento'] = DateFormat('yyyy-MM-dd').format(birthDate!);
+                }
+                if (peso != null) payload['peso'] = peso;
+                if (altura != null) payload['altura'] = altura;
+
+                await context.read<AthletesViewModel>().update(athlete.id!, payload);
+                final vm = context.read<AthletesViewModel>();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta actualizado'),
+                    backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
+                  Navigator.pop(context);
+                }
+                vm.clearError();
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              await context.read<AthletesViewModel>().update(athlete.id!, {
-                'nombre': nameController.text.trim(),
-                'apellido': lastNameController.text.trim(),
-                'email': emailController.text.trim(),
-                'telefono': phoneController.text.trim(),
-                'direccion': addressController.text.trim(),
-                'contacto_emergencia': '',
-              });
-              final vm = context.read<AthletesViewModel>();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(vm.errorMessage.isNotEmpty ? vm.errorMessage : 'Atleta actualizado'),
-                  backgroundColor: vm.errorMessage.isNotEmpty ? Colors.red : Colors.green));
-                Navigator.pop(context);
-              }
-              vm.clearError();
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -463,11 +687,15 @@ class _AthletesViewState extends State<AthletesView> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (context) {
+        final formKey = GlobalKey<FormState>();
+        return StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1A1A1A),
           title: const Text('Asignar/Cambiar Membresía', style: TextStyle(color: Color(0xFFFF3B30), fontWeight: FontWeight.bold)),
-          content: Column(
+          content: Form(
+            key: formKey,
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -480,6 +708,7 @@ class _AthletesViewState extends State<AthletesView> {
                 dropdownColor: const Color(0xFF2A2A2A),
                 value: selectedId,
                 style: const TextStyle(color: Colors.white),
+                validator: (v) => v == null ? 'Selecciona una membresía' : null,
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Seleccionar membresía...', style: TextStyle(color: Colors.grey))),
                   ...memberships.map((m) => DropdownMenuItem(
@@ -518,11 +747,13 @@ class _AthletesViewState extends State<AthletesView> {
               ],
             ],
           ),
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
               onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
                 if (selectedId != null) {
                   final today = DateTime.now();
                   final payload = {
@@ -545,7 +776,8 @@ class _AthletesViewState extends State<AthletesView> {
             ),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 

@@ -1,22 +1,24 @@
-/// Configuración centralizada de la API REST
+/// Configuracion centralizada de la API REST
 /// 
-/// INSTRUCCIONES:
-/// ✅ AQUÍ ES DONDE DEBES PONER TU IP DE LA API NODE.JS
+/// La URL base se lee del archivo .env (variable API_BASE_URL)
+/// Si no encuentra .env, usa 192.168.100.75:3000 por defecto
 /// 
-/// Ejemplo: 
+/// Ejemplos de API_BASE_URL en .env:
 /// - http://192.168.1.100:3000
-/// - http://10.0.2.2:3000 (para emulador Android)
-/// - http://localhost:3000 (para dispositivo local)
+/// - http://10.0.2.2:3000 (emulador Android)
+/// - http://localhost:3000 (dispositivo local)
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.100.75:3000';
+  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.100.75:3000';
 
   // Auth
   static const String loginEndpoint = '/api/auth/login';
   static const String registerEndpoint = '/api/auth/register';
   static const String verifyTokenEndpoint = '/api/auth/verify';
   static const String profileEndpoint = '/api/auth/profile';
-  static const String membershipsEndpoint = '/api/auth/memberships';
+  static const String membershipsEndpoint = '/api/members/memberships';
 
   // Admin - Memberships
   static const String adminMemberships = '/api/admin/memberships';
@@ -76,6 +78,7 @@ class ApiConfig {
 
   // Admin - Stats
   static const String adminStats = '/api/admin/stats';
+  static const String publicStats = '/api/public/stats';
   
   // Headers por defecto
   static const Map<String, String> defaultHeaders = {
