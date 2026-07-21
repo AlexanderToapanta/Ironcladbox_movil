@@ -1,8 +1,8 @@
 /// Configuracion centralizada de la API REST
-/// 
+///
 /// La URL base se lee del archivo .env (variable API_BASE_URL)
 /// Si no encuentra .env, usa 192.168.100.75:3000 por defecto
-/// 
+///
 /// Ejemplos de API_BASE_URL en .env:
 /// - http://192.168.1.100:3000
 /// - http://10.0.2.2:3000 (emulador Android)
@@ -11,7 +11,8 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.100.75:3000';
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://10.40.38.29:3000';
 
   // Auth
   static const String loginEndpoint = '/api/auth/login';
@@ -23,8 +24,10 @@ class ApiConfig {
   // Admin - Memberships
   static const String adminMemberships = '/api/admin/memberships';
   static const String adminMembershipsAssign = '/api/admin/memberships/assign';
-  static const String adminMembershipsExpired = '/api/admin/memberships/expired';
-  static const String adminMembershipsDeactivate = '/api/admin/memberships/deactivate-expired';
+  static const String adminMembershipsExpired =
+      '/api/admin/memberships/expired';
+  static const String adminMembershipsDeactivate =
+      '/api/admin/memberships/deactivate-expired';
 
   // Admin - Athletes
   static const String adminAthletes = '/api/admin/athletes';
@@ -50,7 +53,8 @@ class ApiConfig {
   static const String classesMy = '/api/classes/my-classes';
   static const String classesEnroll = '/api/classes/enroll';
   static const String classesUnenroll = '/api/classes/unenroll';
-  static const String classesDeleteEnrollment = '/api/classes/delete-enrollment';
+  static const String classesDeleteEnrollment =
+      '/api/classes/delete-enrollment';
 
   // WOD
   static const String wod = '/api/wod';
@@ -79,13 +83,13 @@ class ApiConfig {
   // Admin - Stats
   static const String adminStats = '/api/admin/stats';
   static const String publicStats = '/api/public/stats';
-  
+
   // Headers por defecto
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
-  
+
   // Timeouts
   static const int connectTimeout = 120000; // 120 segundos (Render cold start)
   static const int receiveTimeout = 120000;
